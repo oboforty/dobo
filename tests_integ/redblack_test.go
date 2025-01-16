@@ -1,4 +1,4 @@
-package memtable
+package tests_integ
 
 import (
 	"bufio"
