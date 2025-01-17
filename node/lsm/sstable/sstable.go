@@ -10,9 +10,9 @@ type BloomFilterComparator func(bloom *bloom.BloomFilter, val interface{}) bool
 
 type SSTable struct {
 	// Metadata
-	ParentTableName string
-	Level           int8
-	Idx             uint32
+	// ParentTableName string
+	Level int8
+	Idx   uint32
 
 	// Bloom Filter
 	// @TODO: put bloom filter into its own struct? uwu

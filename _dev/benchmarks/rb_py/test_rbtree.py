@@ -110,7 +110,7 @@ def test_delete() -> None:
 def test_complex_delete() -> None:
     bst = RedBlackTree()
 
-    with open("small_input.txt") as infile:
+    with open("../data/memtable/small_input.txt") as infile:
         for line in infile:
             sline = line.split()
             if sline[0] == "a":
@@ -123,7 +123,7 @@ def test_complex_delete() -> None:
 def test_long() -> None:
     t1 = time.time()
     bst = RedBlackTree()
-    with open("test_input.txt") as infile:
+    with open("../data/memtable/test_input.txt") as infile:
         for line in infile:
             sline = line.split()
             if sline[0] == "a":
