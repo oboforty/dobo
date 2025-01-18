@@ -4,6 +4,7 @@ import (
 	"cmp"
 	"dobo/lsm/core"
 	"dobo/lsm/memtable"
+	"iter"
 )
 
 type Table[P cmp.Ordered, V any] interface {
@@ -16,8 +17,11 @@ type MemTable[P cmp.Ordered, V any] interface {
 	Table[P, V]
 
 	ByteSize() uint
+	// Size() uint
 	IsFull() bool
-	CloneAndClear() MemTable[P, V]
+	Clear()
+
+	ItemIterator() iter.Seq[*core.ItemQuery[P, V]]
 }
 
 type SSTable[P cmp.Ordered, V any] interface {
@@ -91,7 +95,7 @@ func (t *LSMTreeTable[P, V]) Upsert(item *core.ItemWrite[P, V]) {
 		// @TODO: Log
 		println("Flushing MemTable")
 
-		var memt = t.Memtable.CloneAndClear()
+		var memt = t.Memtable
 
 		go FlushMemTable(memt)
 	}

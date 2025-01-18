@@ -3,6 +3,7 @@ package memtable
 import (
 	"cmp"
 	"dobo/lsm/core"
+	"iter"
 	"unsafe"
 
 	rbt "github.com/emirpasic/gods/v2/trees/redblacktree"
@@ -136,4 +137,30 @@ func (rb *RBMemT[P, V]) CloneAndClear() *RBMemT[P, V] {
 	rb.tree.Clear()
 
 	return &cloneRB
+}
+func (rb *RBMemT[P, V]) Clear() {
+	rb.tree.Clear()
+}
+
+func (rb *RBMemT[P, V]) ItemIterator() iter.Seq[*core.ItemQuery[P, V]] {
+	return func(yield func(*core.ItemQuery[P, V]) bool) {
+
+		it := rb.tree.Iterator()
+
+		for i := 0; it.Next(); i++ {
+			node := it.Node()
+
+			item := &core.ItemQuery[P, V]{
+				PartKey: node.Key,
+				Value:   node.Value,
+
+				FoundIn:      core.FOUND_AT_MEM,
+				FoundSSLevel: -1,
+			}
+
+			if !yield(item) {
+				return
+			}
+		}
+	}
 }

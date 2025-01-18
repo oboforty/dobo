@@ -1,8 +1,15 @@
 package lsm
 
-import "cmp"
+import (
+	"cmp"
+)
 
 func FlushMemTable[P cmp.Ordered, V any](memt MemTable[P, V]) (SSTable[P, V], error) {
+	// tree is iterated in partition key order!
+	for node := range memt.ItemIterator() {
+
+		print(node.PartKey)
+	}
 
 	// todo: iter, sort, write sorted to disk
 	// todo: write idx (&summary @later) file
