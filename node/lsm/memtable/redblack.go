@@ -14,69 +14,29 @@ import (
 const RB_NODE_PTRS_SIZE = uint(unsafe.Sizeof(rbt.Node[int8, int8]{}) - (unsafe.Sizeof(int8(0)) * 2))
 
 // MemTable implementing Red-Black Balanced Trees
-type RBMemT[P cmp.Ordered, V any] struct {
-	PartKeyTypeInfo *core.TypeInfo
-	SortKeyTypeInfo *core.TypeInfo
-	ValueTypeInfo   *core.TypeInfo
+type RBMemT[P cmp.Ordered] struct {
+	MemT[P]
 
-	MaxSize uint
-
-	tree *rbt.Tree[P, V]
+	tree *rbt.Tree[P, []byte]
 }
 
-func NewRedBlack[P cmp.Ordered, V any]() (*RBMemT[P, V], error) {
-	pkt, err := core.GetTypeInfo[P]()
-	if err != nil {
-		return nil, err
+func NewRedBlack[P cmp.Ordered](cfg *CfgMemtable, partKeyTypeInfo *core.TypeInfo) *RBMemT[P] {
+	rb := &RBMemT[P]{
+		MemT: MemT[P]{
+			partKeyTypeInfo: partKeyTypeInfo,
+			maxSize:         cfg.MaxByteSize,
+		},
 	}
+	rb.tree = rbt.New[P, []byte]()
 
-	// skt, err := core.GetTypeInfo[S]()
-	// if err != nil {
-	// 	return nil, err
-	// }
-
-	vkt, err := core.GetTypeInfo[V]()
-	if err != nil {
-		return nil, err
-	}
-
-	rb := &RBMemT[P, V]{
-		PartKeyTypeInfo: pkt,
-		ValueTypeInfo:   vkt,
-		MaxSize:         128 * 1024 * 1024, // TODO: config
-		tree:            rbt.New[P, V](),
-	}
-
-	return rb, nil
+	return rb
 }
 
-// func (rb *RBMemT) Init() {
-// 	// I decided not to use generics as a generic cmp function with interface{} would mean performance reduction
-// 	// func (rb *RBMemT) Get(partKey interface{}, sortKey interface{}) interface{}
-
-// 	switch rb.PartKeyType {
-// 	case core.DTYPE_INT32:
-// 		rb.tree = &rbt.Tree{Comparator: cmp.Int32Comparator}
-// 	case core.DTYPE_INT64:
-// 		rb.tree = &rbt.Tree{Comparator: cmp.Int64Comparator}
-// 	case core.DTYPE_FLOAT32:
-// 		rb.tree = &rbt.Tree{Comparator: cmp.Float32Comparator}
-// 	case core.DTYPE_FLOAT64:
-// 		rb.tree = &rbt.Tree{Comparator: cmp.Float64Comparator}
-// 	// case core.DTYPE_BYTES:
-// 	case core.DTYPE_STRING:
-// 	// case core.DTYPE_TIME:
-// 	// 	rb.tree = &rbt.Tree{Comparator: cmp.TimeComparator}
-// 	default:
-// 		panic("Data Type not supported yit")
-// 	}
-// }
-
-func (rb *RBMemT[P, V]) Get(partKey P) *core.ItemQuery[P, V] {
+func (rb *RBMemT[P]) Get(partKey P) *core.ItemQuery[P] {
 	node := rb.tree.GetNode(partKey)
 
 	if node != nil {
-		return &core.ItemQuery[P, V]{
+		return &core.ItemQuery[P]{
 			PartKey: node.Key,
 			Value:   node.Value,
 
@@ -88,17 +48,19 @@ func (rb *RBMemT[P, V]) Get(partKey P) *core.ItemQuery[P, V] {
 	return nil
 }
 
-func (rb *RBMemT[P, V]) Upsert(item *core.ItemWrite[P, V]) {
-
-	if rb.PartKeyTypeInfo.IsDynamicSize {
-		rb.PartKeyTypeInfo.InsertedSize += core.GetSize(item.PartKey)
-	}
-
-	if rb.ValueTypeInfo.IsDynamicSize {
-		rb.ValueTypeInfo.InsertedSize += core.GetSize(item.Value)
-	}
-
+func (rb *RBMemT[P]) Upsert(item *core.ItemWrite[P]) {
 	rb.tree.Put(item.PartKey, item.Value)
+
+	// Calculate memory allocation of item
+	// Partition key
+	if rb.partKeyTypeInfo.IsDynamicSize {
+		rb.byteSize += core.GetSize(item.PartKey)
+	} else {
+		rb.byteSize += rb.partKeyTypeInfo.StaticSize
+	}
+
+	// Value & Node structure size
+	rb.byteSize += uint(len(item.Value)) + RB_NODE_PTRS_SIZE
 }
 
 // @TODO: Tombstone entry!
@@ -106,51 +68,20 @@ func (rb *RBMemT[P, V]) Upsert(item *core.ItemWrite[P, V]) {
 // 	rb.tree.Remove(partKey)
 // }
 
-func (rb *RBMemT[P, V]) ByteSize() uint {
-	var totalSize uint = 0
-	length := uint(rb.tree.Size())
-
-	if rb.PartKeyTypeInfo.IsDynamicSize {
-		totalSize += rb.PartKeyTypeInfo.InsertedSize
-	} else {
-		totalSize += rb.PartKeyTypeInfo.StaticSize * length
-	}
-
-	if rb.ValueTypeInfo.IsDynamicSize {
-		totalSize += rb.ValueTypeInfo.InsertedSize
-	} else {
-		totalSize += rb.ValueTypeInfo.StaticSize * length
-	}
-
-	totalSize += RB_NODE_PTRS_SIZE * length
-
-	return totalSize
-}
-
-func (rb *RBMemT[P, V]) IsFull() bool {
-	return rb.MaxSize <= rb.ByteSize()
-}
-
-// Creates a shallow copy of the struct and clears
-func (rb *RBMemT[P, V]) CloneAndClear() *RBMemT[P, V] {
-	cloneRB := *rb
+func (rb *RBMemT[P]) Clear() {
 	rb.tree.Clear()
-
-	return &cloneRB
-}
-func (rb *RBMemT[P, V]) Clear() {
-	rb.tree.Clear()
+	rb.byteSize = 0
 }
 
-func (rb *RBMemT[P, V]) ItemIterator() iter.Seq[*core.ItemQuery[P, V]] {
-	return func(yield func(*core.ItemQuery[P, V]) bool) {
+func (rb *RBMemT[P]) ItemIterator() iter.Seq[*core.ItemQuery[P]] {
+	return func(yield func(*core.ItemQuery[P]) bool) {
 
 		it := rb.tree.Iterator()
 
 		for i := 0; it.Next(); i++ {
 			node := it.Node()
 
-			item := &core.ItemQuery[P, V]{
+			item := &core.ItemQuery[P]{
 				PartKey: node.Key,
 				Value:   node.Value,
 

@@ -6,45 +6,54 @@ import (
 )
 
 type TypeInfo struct {
+	Type          DataType
 	IsDynamicSize bool
 	StaticSize    uint
-
-	InsertedSize uint
 }
 
+type DataType string
+
+const (
+	DTYPE_INT32   DataType = "int32"
+	DTYPE_INT64   DataType = "int64"
+	DTYPE_FLOAT32 DataType = "float32"
+	DTYPE_FLOAT64 DataType = "float64"
+	DTYPE_BYTES   DataType = "bytes"
+	DTYPE_STRING  DataType = "string"
+	DTYPE_TIME    DataType = "time"
+)
+
 func GetTypeInfo[T any]() (*TypeInfo, error) {
+	typeInfo := &TypeInfo{
+		IsDynamicSize: false,
+	}
 	var asd T
-	var size uint
-	var isdynsize bool
 
 	switch any(asd).(type) {
-	// case int:
-	// case int8:
-	// case int16:
 	case int32:
+		typeInfo.Type = DTYPE_INT32
 	case int64:
-	// case uint:
-	// case uint8:
-	// case uint16:
-	// case uint32:
-	// case uint64:
-	// case uintptr:
+		typeInfo.Type = DTYPE_INT64
 	case float32:
+		typeInfo.Type = DTYPE_FLOAT32
 	case float64:
-		// case rune:
-		size = uint(unsafe.Sizeof(asd))
+		typeInfo.Type = DTYPE_FLOAT64
 	case string:
+		typeInfo.Type = DTYPE_STRING
+		typeInfo.IsDynamicSize = true
 	case []byte:
-		isdynsize = true
+		typeInfo.Type = DTYPE_BYTES
+		typeInfo.IsDynamicSize = true
 	default:
 		// forbidden type
 		return nil, errors.New("invalid data type")
 	}
 
-	return &TypeInfo{
-		StaticSize:    size,
-		IsDynamicSize: isdynsize,
-	}, nil
+	if !typeInfo.IsDynamicSize {
+		typeInfo.StaticSize = uint(unsafe.Sizeof(asd))
+	}
+
+	return typeInfo, nil
 }
 
 func GetSize[T any](v T) uint {
@@ -52,6 +61,8 @@ func GetSize[T any](v T) uint {
 	case string:
 	case []byte:
 		return uint(len(v))
+	default:
+		return uint(unsafe.Sizeof(v))
 	}
 
 	return 0

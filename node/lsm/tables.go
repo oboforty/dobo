@@ -4,31 +4,74 @@ import (
 	"cmp"
 	"dobo/lsm/core"
 	"dobo/lsm/memtable"
+	"dobo/lsm/sstable"
 	"iter"
+	"log"
 )
 
-type Table[P cmp.Ordered, V any] interface {
-	Get(P) *core.ItemQuery[P, V]
-	Upsert(*core.ItemWrite[P, V])
+type MemTable[P cmp.Ordered] interface {
+	Get(P) *core.ItemQuery[P]
+	Upsert(*core.ItemWrite[P])
 	// Delete(interface{})
-}
-
-type MemTable[P cmp.Ordered, V any] interface {
-	Table[P, V]
 
 	ByteSize() uint
-	// Size() uint
 	IsFull() bool
 	Clear()
 
-	ItemIterator() iter.Seq[*core.ItemQuery[P, V]]
+	ItemIterator() iter.Seq[*core.ItemQuery[P]]
 }
 
-type SSTable[P cmp.Ordered, V any] interface {
-	Table[P, V]
+type SSTable[P cmp.Ordered] interface {
+	Get(P) *core.ItemQuery[P]
+
+	GetGenerationId() int
 }
 
 type WAL interface {
+}
+
+type LSMTreeTable[P cmp.Ordered] struct {
+	Siblings []*LSMTreeTable[P]
+
+	// Components
+	MemTable MemTable[P]
+	SSTables []SSTable[P] // latest table is the newest
+	Wal      WAL
+
+	partKeyTypeInfo core.TypeInfo
+	cfg             CfgTable
+}
+
+func New[P cmp.Ordered](cfg *CfgTable) (*LSMTreeTable[P], error) {
+	t := &LSMTreeTable[P]{
+		cfg: *cfg,
+	}
+
+	typeInfo, err := core.GetTypeInfo[P]()
+	if err != nil {
+		return nil, err
+	}
+	t.partKeyTypeInfo = *typeInfo
+
+	if cfg.MemTable.Type == "" {
+		cfg.MemTable.Type = memtable.MEMTYPE_REDBLACK
+	}
+
+	t.createMemtable()
+
+	// @TODO: load existing SSTables from Disc!
+
+	return t, nil
+}
+
+func (t *LSMTreeTable[P]) createMemtable() {
+	switch t.cfg.MemTable.Type {
+	case memtable.MEMTYPE_REDBLACK:
+		t.MemTable = memtable.NewRedBlack[P](
+			&t.cfg.MemTable,
+			&t.partKeyTypeInfo,
+		)
+	}
 }
 
 // GET, QUERY - bulk query, can filter,
@@ -38,43 +81,16 @@ type WAL interface {
 
 // CQRS: (GET, QUERY), (CREATE, UPSERT, UPDATE, REMOVE, DELETE), (BALANCE-INDEX, SETCONFIG, CREATE-TABLE, DELETE-TABLE, REPLICATE-TABLE, CREATE-PARTITION, DELETE-PARTITION, REPARTITION-TABLE)
 
-type LSMTreeTable[P cmp.Ordered, V any] struct {
-	Siblings []*LSMTreeTable[P, V]
+func (t *LSMTreeTable[P]) Get(partKey P) *core.ItemQuery[P] {
+	var item *core.ItemQuery[P]
 
-	// Components
-	Memtable MemTable[P, V]
-	Sstables []SSTable[P, V] // latest table is the newest
-	Wal      WAL
-}
-
-func New[P cmp.Ordered, V any](cfg *CfgTable) (*LSMTreeTable[P, V], error) {
-	t := &LSMTreeTable[P, V]{}
-
-	switch cfg.MemTable.Type {
-	case MEMTYPE_REDBLACK:
-	default:
-		memt, err := memtable.NewRedBlack[P, V]()
-
-		if err != nil {
-			return nil, err
-		}
-
-		t.Memtable = memt
-	}
-
-	return t, nil
-}
-
-func (t *LSMTreeTable[P, V]) Get(partKey P) *core.ItemQuery[P, V] {
-	var item *core.ItemQuery[P, V]
-
-	item = t.Memtable.Get(partKey)
+	item = t.MemTable.Get(partKey)
 	if item != nil {
 		return item
 	}
 
-	for i := len(t.Sstables) - 1; i >= 0; i-- {
-		item = t.Sstables[i].Get(partKey)
+	for i := len(t.SSTables) - 1; i >= 0; i-- {
+		item = t.SSTables[i].Get(partKey)
 
 		// @TODO: handle overflow & uint64?
 		if item != nil {
@@ -86,22 +102,46 @@ func (t *LSMTreeTable[P, V]) Get(partKey P) *core.ItemQuery[P, V] {
 	return item
 }
 
-func (t *LSMTreeTable[P, V]) Upsert(item *core.ItemWrite[P, V]) {
-	t.Memtable.Upsert(item)
+func (t *LSMTreeTable[P]) Upsert(item *core.ItemWrite[P]) bool {
+	t.MemTable.Upsert(item)
 
-	if t.Memtable.IsFull() {
-		// Mem Tree has grown to its limit. Trigger an SSTable write task
-
-		// @TODO: Log
-		println("Flushing MemTable")
-
-		var memt = t.Memtable
-
-		go FlushMemTable(memt)
-	}
-
+	// Mem Tree has grown to its limit. recommend client to trigger flush task
+	return t.MemTable.IsFull()
 }
 
+// @TODO: Tombstone
 // func (d *LSMTreeTable) Delete(partKey P) {
 // 	d.Memtable.Delete(partKey)
 // }
+
+func (t *LSMTreeTable[P]) CurrentGenerationId() int {
+	l := len(t.SSTables) - 1
+
+	if l <= 0 {
+		return 0
+	}
+
+	return t.SSTables[l].GetGenerationId()
+}
+
+func (t *LSMTreeTable[P]) FlushMemToDisc() error {
+	// @TODO: Log
+
+	log.Println("[SST] Flushing MemTable, size: ", t.MemTable.ByteSize())
+
+	memtOld := t.MemTable
+	t.createMemtable()
+	defer memtOld.Clear()
+
+	// @TODO: new & pass cfg in one
+	ss := &sstable.SSTable[P]{
+		TableName:       t.cfg.Name,
+		BasePath:        t.cfg.SSTable.BasePath,
+		GenerationId:    t.CurrentGenerationId() + 1,
+		PartKeyTypeInfo: &t.partKeyTypeInfo,
+	}
+
+	t.SSTables = append(t.SSTables, ss)
+
+	return ss.WriteMemToDisc(memtOld)
+}
