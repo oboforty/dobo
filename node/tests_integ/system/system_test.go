@@ -10,6 +10,7 @@ import (
 	"dobo/lsm"
 	"dobo/lsm/core"
 	"dobo/lsm/memtable"
+	"dobo/lsm/sstable"
 	"dobo/lsm/utils"
 )
 
@@ -71,7 +72,7 @@ func TestFlushMemTable(t *testing.T) {
 			Type:        memtable.MEMTYPE_REDBLACK,
 			MaxByteSize: unitSize * uint(N_ITEMS),
 		},
-		SSTable: lsm.CfgSSTable{
+		SSTable: sstable.CfgSSTable{
 			// @TODO: conver from relative to tests into absolute path
 			BasePath:                  "/home/rajmund_csombordi/dev/dobo/",
 			DynamicValueSerialization: "jsonb",

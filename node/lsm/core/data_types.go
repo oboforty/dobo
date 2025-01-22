@@ -2,6 +2,18 @@ package core
 
 import "cmp"
 
+type DataType string
+
+const (
+	DTYPE_INT32   DataType = "int32"
+	DTYPE_INT64   DataType = "int64"
+	DTYPE_FLOAT32 DataType = "float32"
+	DTYPE_FLOAT64 DataType = "float64"
+	DTYPE_BYTES   DataType = "bytes"
+	DTYPE_STRING  DataType = "string"
+	DTYPE_TIME    DataType = "time"
+)
+
 type FindStatus = uint8
 
 const (
@@ -31,9 +43,7 @@ type ItemQuery[K cmp.Ordered] struct {
 type DynamicValueSerialization string
 
 const (
-	// Values are stored as json in byte format. Keys are prepended
-	STORE_TYPE_JSONB = "jsonb"
-	// Values are stored as json lines file, with added __KEY and __SRT fields
+	// Values are stored as json lines file
 	STORE_TYPE_JSONL = "jsonl"
 	// Values are serialized as gob
 	STORE_TYPE_GOB = "gob"

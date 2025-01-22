@@ -1,49 +1,95 @@
 package sstable
 
-// import (
-// 	"encoding/gob"
-// 	"encoding/json"
-// 	"io"
-// )
+import (
+	"bytes"
+	"compress/gzip"
+	"encoding/binary"
+	"os"
+)
 
-// func MarshalJson[T any](val T) ([]byte, error) {
-// 	data, err := json.Marshal(val)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-// 	return data, nil
-// }
-
-// func MarshalGob(writer *io.Writer, val) ([]byte, error) {
-// 	enc := gob.NewEncoder(*writer)
-// 	if err := enc.Encode(val); err != nil {
-// 		return nil, err
-// 	}
-// 	return buf.Bytes(), nil
-// }
-import "io"
-
-type CountingWriter struct {
-	writer       io.Writer
-	bytesWritten int
+// compressedBlockWriter handles writing compressed blocks of data to a file with buffering
+type compressedBlockWriter struct {
+	// Maximum size of each block
+	blockSize    int
+	filename     string
+	file         *os.File
+	buffer       bytes.Buffer
+	currentBlock int32
 }
 
-// New creates a new writer that wraps w.  The wrapping writer counts
-// the number of bytes written to the wrapped writer.
-func NewCountingWriter(w io.Writer) *CountingWriter {
-	return &CountingWriter{
-		writer:       w,
-		bytesWritten: 0,
+func NewCompressedWriter(filename string, blockSize uint32) (*compressedBlockWriter, error) {
+	file, err := os.OpenFile(filename, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
+	if err != nil {
+		return nil, err
 	}
+	return &compressedBlockWriter{
+		blockSize: int(blockSize),
+		filename:  filename,
+		file:      file,
+		buffer:    bytes.Buffer{},
+	}, nil
 }
 
-func (w *CountingWriter) Write(b []byte) (int, error) {
-	n, err := w.writer.Write(b)
-	w.bytesWritten += n
-	return n, err
+func (bc *compressedBlockWriter) CompressBlock(data []byte) ([]byte, error) {
+	var buf bytes.Buffer
+	writer := gzip.NewWriter(&buf)
+	_, err := writer.Write(data)
+	if err != nil {
+		return nil, err
+	}
+	err = writer.Close()
+	if err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
 }
 
-// BytesWritten returns the number of bytes that were written to the wrapped writer.
-func (w *CountingWriter) BytesWritten() int {
-	return w.bytesWritten
+func (bc *compressedBlockWriter) Write(data []byte) (int32, error) {
+	bc.buffer.Write(data)
+
+	if bc.buffer.Len() >= bc.blockSize {
+		return bc.currentBlock, bc.flushBuffer()
+	}
+	return bc.currentBlock, nil
+}
+
+func (bc *compressedBlockWriter) flushBuffer() error {
+	if bc.buffer.Len() == 0 {
+		return nil
+	}
+
+	compressedBlock, err := bc.CompressBlock(bc.buffer.Bytes())
+	if err != nil {
+		return err
+	}
+
+	// Write the size of the compressed block first
+	blockSize := int32(len(compressedBlock))
+	err = binary.Write(bc.file, binary.LittleEndian, blockSize)
+	if err != nil {
+		return err
+	}
+
+	// Write the compressed block itself
+	_, err = bc.file.Write(compressedBlock)
+	if err != nil {
+		return err
+	}
+
+	// @TODO: add 4 byte checksum!!!
+
+	bc.currentBlock += blockSize
+
+	bc.buffer.Reset()
+	return nil
+}
+
+func (bc *compressedBlockWriter) Close() error {
+	// Flush any remaining data in the buffer
+	err := bc.flushBuffer()
+	if err != nil {
+		return err
+	}
+
+	return bc.file.Close()
 }

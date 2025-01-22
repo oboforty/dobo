@@ -11,18 +11,6 @@ type TypeInfo struct {
 	StaticSize    uint
 }
 
-type DataType string
-
-const (
-	DTYPE_INT32   DataType = "int32"
-	DTYPE_INT64   DataType = "int64"
-	DTYPE_FLOAT32 DataType = "float32"
-	DTYPE_FLOAT64 DataType = "float64"
-	DTYPE_BYTES   DataType = "bytes"
-	DTYPE_STRING  DataType = "string"
-	DTYPE_TIME    DataType = "time"
-)
-
 func GetTypeInfo[T any]() (*TypeInfo, error) {
 	typeInfo := &TypeInfo{
 		IsDynamicSize: false,

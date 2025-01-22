@@ -1,50 +1,69 @@
 package sstable
 
 import (
+	"bytes"
 	"encoding/binary"
-	"math"
+	"io"
+	"log/slog"
 
 	"github.com/bits-and-blooms/bloom/v3"
+	// "github.com/bits-and-blooms/bloom"
 )
 
-func Int32BFCmp(bloom *bloom.BloomFilter, val interface{}) bool {
-	i := val.(uint32)
-	nl := make([]byte, 4)
-	binary.BigEndian.PutUint32(nl, i)
+type BloomFilterComparator func(bloom *bloom.BloomFilter, val interface{}) bool
 
-	return bloom.Test(nl)
+type bloomFilter struct {
+	// bloom Filter
+	// @TODO: put bloom filter into its own struct? + even add interface?
+	bloom *bloom.BloomFilter
+	// bloomComp BloomFilterComparator
 }
 
-func Int64BFCmp(bloom *bloom.BloomFilter, val interface{}) bool {
-	i := val.(uint64)
-	nl := make([]byte, 8)
-	binary.BigEndian.PutUint64(nl, i)
+type CfgBloomFilter struct {
+	Bits          uint `toml:"bits"`
+	HashFunctions uint `toml:"hash_functions"`
 
-	return bloom.Test(nl)
+	MaxItems          uint    `toml:"max_items"`
+	FalsePositiveRate float64 `toml:"false_positive_rate"`
 }
 
-func Float32BFCmp(bloom *bloom.BloomFilter, val interface{}) bool {
-	i := val.(float32)
-	nl := make([]byte, 4)
-	binary.BigEndian.PutUint32(nl, math.Float32bits(i))
+func newBloomFilter(cfg CfgBloomFilter) (bf *bloomFilter) {
+	if cfg.MaxItems > 0 {
+		if cfg.Bits > 0 || cfg.HashFunctions > 0 {
+			slog.Warn("[BloomFilter] redundant config: either define MaxItems+FalsePositiveRates OR Bits+HashFunctions in config!")
+		}
 
-	return bloom.Test(nl)
+		// convenience params
+		bf.bloom = bloom.NewWithEstimates(cfg.MaxItems, cfg.FalsePositiveRate)
+	} else {
+		bf.bloom = bloom.New(cfg.Bits, cfg.HashFunctions)
+	}
+
+	// load if exists
+
+	return
 }
 
-func Float64BFCmp(bloom *bloom.BloomFilter, val interface{}) bool {
-	i := val.(float64)
-	nl := make([]byte, 8)
-	binary.BigEndian.PutUint64(nl, math.Float64bits(i))
+func (b *bloomFilter) Test(val interface{}) (bool, error) {
+	buf := new(bytes.Buffer)
 
-	return bloom.Test(nl)
+	// @TODO: handle string and byte keys! binary uses Reflect!
+	err := binary.Write(buf, binary.BigEndian, val)
+
+	if err != nil {
+		return false, err
+	}
+
+	return b.bloom.Test(buf.Bytes()), nil
 }
 
-func BytesBFCmp(bloom *bloom.BloomFilter, val interface{}) bool {
-	return bloom.Test(val.([]byte))
-}
+func (b *bloomFilter) Serialize(w io.Writer) error {
+	// data, err := b.bloom.MarshalJSON()
+	// if err != nil {
+	// 	return err
+	// }
 
-func StringBFCmp(bloom *bloom.BloomFilter, val interface{}) bool {
-	return bloom.TestString(val.(string))
-}
+	// err := binary.Write(w, binary.BigEndian, val)
 
-// @TODO: time
+	return nil
+}
