@@ -74,10 +74,9 @@ func (ss *SSTable[P]) Get(partKey P) *core.ItemQuery[P] {
 	if idxRange == nil {
 		return nil
 	}
-	println("!!! Looking for:", partKey, " Summary Range:", idxRange.Id, "/", len(ss.summaries), idxRange.MinBlockOffset, idxRange.MaxBlockOffset)
 
 	// @TODO: binary search idx file
-	oof, err := SearchKeyInFile2(
+	hit, err := SearchOffsetInIndexFile(
 		ss.dbpath+".idx",
 		idxRange.MinBlockOffset,
 		idxRange.MaxBlockOffset,
@@ -86,11 +85,12 @@ func (ss *SSTable[P]) Get(partKey P) *core.ItemQuery[P] {
 	if err != nil {
 		panic(err)
 	}
-	println("@@@@@", oof)
+	if hit == nil {
+		return nil
+	}
 
-	// check idx
-
-	// readBlock()
+	// @TODO: ITT: seek, read, decompress & scan dat file
+	println("@@@ BINGO ", hit.BlockOffset, hit.InterBlockOffset)
 
 	// try disk IO
 	// return &core.Item{
@@ -152,7 +152,7 @@ func (ss *SSTable[P]) WriteToDisc(table IterableTable[P]) error {
 				Id:              int16(len(ss.summaries)),
 				PartKeyTypeInfo: &ss.partKeyTypeInfo,
 				MinKey:          currentKey,
-				MinBlockOffset:  blockOffset,
+				MinBlockOffset:  idxBlockOffset,
 			}
 		}
 
@@ -163,9 +163,7 @@ func (ss *SSTable[P]) WriteToDisc(table IterableTable[P]) error {
 		idxContent = binary.BigEndian.AppendUint32(idxContent, uint32(blockOffset))
 		idxContent = binary.BigEndian.AppendUint32(idxContent, uint32(interBlockOffset))
 
-		// oof := make([]byte, 0)
-		// oof, _ = binary.Append(oof, binary.BigEndian, currentKey)
-		// println("###", keyLength, "OFF:", idxBlockOffset, asd, keyLength)
+		// println("###", idxBlockOffset, idxBlockOffset%16, "-", miaow, miaow%16)
 
 		_, err := idx_file.Write(idxContent)
 		if err != nil {
