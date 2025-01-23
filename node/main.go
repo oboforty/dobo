@@ -1,11 +1,8 @@
 package main
 
-import "regexp"
-
 func main() {
-	r, _ := regexp.Compile("^(.*)-([0-9]+).db$")
+	var s []byte
+	s = make([]byte, 0, 5)
 
-	match := r.FindStringSubmatch("fostaliga-123-2_24-13.db")
-
-	println(match[2])
+	println(s[0])
 }

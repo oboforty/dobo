@@ -5,9 +5,11 @@ import (
 	"dobo/lsm/core"
 	"dobo/lsm/memtable"
 	"dobo/lsm/sstable"
+	"dobo/lsm/utils"
 	"iter"
 	"log"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strconv"
 )
@@ -127,17 +129,15 @@ func (t *LSMTreeTable[P]) createMemtable() {
 }
 
 func (t *LSMTreeTable[P]) loadSSTables() error {
-	// ensure directories
-	if _, err := os.Stat(t.cfg.SSTable.BasePath); err != nil {
-		err = os.MkdirAll(t.cfg.SSTable.BasePath, os.ModePerm)
+	dbpath := filepath.Join(t.cfg.SSTable.BasePath, t.TableName)
 
-		if err != nil {
-			return os.ErrNotExist
-		}
+	// ensure directories
+	if err := utils.EnsurePath(dbpath); err != nil {
+		return err
 	}
 
 	// load relevant tables
-	files, err := os.ReadDir(t.cfg.SSTable.BasePath)
+	files, err := os.ReadDir(dbpath)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -150,8 +150,8 @@ func (t *LSMTreeTable[P]) loadSSTables() error {
 
 		t.SSTables = append(t.SSTables, sstable.New[P](
 			&t.cfg.SSTable,
-			&t.partKeyTypeInfo,
 			t.TableName,
+			t.partKeyTypeInfo,
 			genId,
 		))
 	}
@@ -171,11 +171,11 @@ func (t *LSMTreeTable[P]) FlushMemToDisc() error {
 	// @TODO: new & pass cfg in one
 	ss := sstable.New[P](
 		&t.cfg.SSTable,
-		&t.partKeyTypeInfo,
 		t.TableName,
+		t.partKeyTypeInfo,
 		t.CurrentGenerationId()+1,
 	)
 	t.SSTables = append(t.SSTables, ss)
 
-	return ss.WriteMemToDisc(memtOld)
+	return ss.WriteToDisc(memtOld)
 }

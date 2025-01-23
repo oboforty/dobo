@@ -44,14 +44,28 @@ func GetTypeInfo[T any]() (*TypeInfo, error) {
 	return typeInfo, nil
 }
 
-func GetSize[T any](v T) uint {
+func GetSize(v interface{}) uint {
 	switch v := any(v).(type) {
 	case string:
+		return uint(len(v))
 	case []byte:
 		return uint(len(v))
 	default:
 		return uint(unsafe.Sizeof(v))
 	}
+}
 
-	return 0
+func GetSizeTypeInfo(v interface{}, typeInfo *TypeInfo) uint {
+	if !typeInfo.IsDynamicSize {
+		return typeInfo.StaticSize
+	}
+
+	switch v := any(v).(type) {
+	case string:
+		return uint(len(v))
+	case []byte:
+		return uint(len(v))
+	default:
+		return uint(unsafe.Sizeof(v))
+	}
 }
