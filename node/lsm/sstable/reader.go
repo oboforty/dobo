@@ -2,8 +2,10 @@ package sstable
 
 import (
 	"bytes"
+	"compress/gzip"
 	"encoding/binary"
 	"fmt"
+	"io"
 	"os"
 )
 
@@ -17,8 +19,21 @@ type IdxSearchHit struct {
 	// @TODO: add more information?
 }
 
+type ValueSearchHit struct {
+	Value []byte
+
+	// @TODO: add more information?
+}
+
+// Reads dataLength (uint32) and data of size `dataLength`
+type DynamicLengthReader struct {
+	reader  io.Reader
+	padding uint32 // offset to ignore after value
+
+}
+
 // LINEAR SEARCH
-// @TODO: implement binary
+// @TODO: implement binary & use io.LimitReader(keyLength) instead
 func SearchOffsetInIndexFile[P comparable](
 	filename string,
 	startBlockOffset,
@@ -31,8 +46,6 @@ func SearchOffsetInIndexFile[P comparable](
 	}
 	defer file.Close()
 
-	b := make([]byte, 4)
-
 	if startBlockOffset > 0 {
 		file.Seek(int64(startBlockOffset), os.SEEK_SET)
 	}
@@ -42,6 +55,8 @@ func SearchOffsetInIndexFile[P comparable](
 	searchKeyBytes, _ = binary.Append(searchKeyBytes, binary.BigEndian, key)
 
 	totalBytes := uint32(0)
+
+	b := make([]byte, 4)
 
 	for {
 		// Read Key Length int32
@@ -94,4 +109,56 @@ func SearchOffsetInIndexFile[P comparable](
 	}
 
 	return nil, nil
+}
+
+func SearchDataFileGzipBlock[P comparable](
+	filename string,
+	startBlockOffset,
+	startInterBlockOffset int32,
+	key P,
+) (*ValueSearchHit, error) {
+	file, err := os.Open(filename)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open file: %w", err)
+	}
+	defer file.Close()
+
+	if startBlockOffset > 0 {
+		file.Seek(int64(startBlockOffset), os.SEEK_SET)
+	}
+
+	b := make([]byte, 4)
+	// Read block length
+	_, err = file.Read(b)
+	if err != nil {
+		return nil, err
+	}
+	blockLength := binary.BigEndian.Uint32(b)
+	if blockLength > MaxUint {
+		return nil, fmt.Errorf("invalid block Length found")
+	}
+
+	// Decompress block
+	compReader, err := gzip.NewReader(io.LimitReader(file, int64(blockLength)))
+	if err != nil {
+		return nil, err
+	}
+	defer compReader.Close()
+
+	decompressed, err := io.ReadAll(compReader)
+	if err != nil {
+		return nil, err
+	}
+
+	valueLengthBytes := decompressed[startInterBlockOffset : startInterBlockOffset+4]
+	valueLength := binary.BigEndian.Uint32(valueLengthBytes)
+	if valueLength > MaxUint {
+		return nil, fmt.Errorf("invalid value length found")
+	}
+
+	value := decompressed[startInterBlockOffset+4 : startInterBlockOffset+4+int32(valueLength)]
+
+	return &ValueSearchHit{
+		Value: value,
+	}, nil
 }

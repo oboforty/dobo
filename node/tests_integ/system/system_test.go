@@ -203,9 +203,9 @@ func TestWriteReadSSTable(t *testing.T) {
 
 	// Assert - correct idx file
 	// idx file entries should be (3 * 4 + 4 = 16 bytes (key itself is ))
+	expectedItem := iter.RndItem
 
 	// Act - read from disc
-	expectedItem := iter.RndItem
 	actualItem := sstable.Get(expectedItem.PartKey)
 	// actualItem := sstable.Get(89)
 
@@ -214,10 +214,10 @@ func TestWriteReadSSTable(t *testing.T) {
 		t.FailNow()
 	}
 
-	if expectedItem.PartKey != actualItem.PartKey || bytes.Equal(expectedItem.Value, actualItem.Value) {
+	if expectedItem.PartKey != actualItem.PartKey || !bytes.Equal(expectedItem.Value, actualItem.Value) {
 		t.Error("Malformed item found")
 		t.FailNow()
 	}
 
-	// assert that there are 10 blocks
+	// @TODO: assert dat & idx file content?
 }

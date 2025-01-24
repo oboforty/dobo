@@ -94,20 +94,6 @@ type compressedBlockWriter struct {
 	interBlockOffset int32
 }
 
-func (bc *compressedBlockWriter) compressBlock(data []byte) ([]byte, error) {
-	var buf bytes.Buffer
-	writer := gzip.NewWriter(&buf)
-	_, err := writer.Write(data)
-	if err != nil {
-		return nil, err
-	}
-	err = writer.Close()
-	if err != nil {
-		return nil, err
-	}
-	return buf.Bytes(), nil
-}
-
 func (bc *compressedBlockWriter) Write(data []byte) (int, error) {
 	n, err := bc.buffer.Write(data)
 
@@ -127,7 +113,7 @@ func (bc *compressedBlockWriter) flushBuffer() error {
 		return nil
 	}
 
-	compressedBlock, err := bc.compressBlock(bc.buffer.Bytes())
+	compressedBlock, err := compressBlock(bc.buffer.Bytes())
 	if err != nil {
 		return err
 	}
@@ -166,4 +152,18 @@ func (bc *compressedBlockWriter) Close() error {
 	}
 
 	return bc.file.Close()
+}
+
+func compressBlock(data []byte) ([]byte, error) {
+	var buf bytes.Buffer
+	writer := gzip.NewWriter(&buf)
+	_, err := writer.Write(data)
+	if err != nil {
+		return nil, err
+	}
+	err = writer.Close()
+	if err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
 }

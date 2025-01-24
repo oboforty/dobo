@@ -1,6 +1,7 @@
 package sstable
 
 import (
+	"bytes"
 	"cmp"
 	"dobo/lsm/core"
 	"dobo/lsm/utils"
@@ -76,7 +77,7 @@ func (ss *SSTable[P]) Get(partKey P) *core.ItemQuery[P] {
 	}
 
 	// @TODO: binary search idx file
-	hit, err := SearchOffsetInIndexFile(
+	khit, err := SearchOffsetInIndexFile(
 		ss.dbpath+".idx",
 		idxRange.MinBlockOffset,
 		idxRange.MaxBlockOffset,
@@ -85,21 +86,35 @@ func (ss *SSTable[P]) Get(partKey P) *core.ItemQuery[P] {
 	if err != nil {
 		panic(err)
 	}
-	if hit == nil {
+	if khit == nil {
+		// @TODO: Panic?
 		return nil
 	}
 
 	// @TODO: ITT: seek, read, decompress & scan dat file
-	println("@@@ BINGO ", hit.BlockOffset, hit.InterBlockOffset)
+	// println("@@@ BINGO ", hit.BlockOffset, hit.InterBlockOffset)
 
-	// try disk IO
-	// return &core.Item{
-	// 	PartKey: node.Key,
-	// 	Value:   node.Value,
+	vhit, err := SearchDataFileGzipBlock(
+		ss.dbpath+".dat",
+		int32(khit.BlockOffset),
+		int32(khit.InterBlockOffset),
+		partKey,
+	)
+	if err != nil {
+		panic(err)
+	}
+	if vhit == nil {
+		// @TODO: Panic?
+		return nil
+	}
 
-	// 	FoundIn:      core.FOUND_AT_SS,
-	// 	FoundSSLevel: ss.Level,
-	// }
+	return &core.ItemQuery[P]{
+		PartKey: partKey,
+		Value:   vhit.Value,
+
+		FoundIn: core.FOUND_AT_SS,
+		// FoundSSLevel: ss.Level,
+	}
 
 	return nil
 }
@@ -157,20 +172,18 @@ func (ss *SSTable[P]) WriteToDisc(table IterableTable[P]) error {
 		}
 
 		// Write Index File (3 int32 + the dynamic sized key itself)
-		idxContent := make([]byte, 0, 4*3+keyLength)
-		idxContent = binary.BigEndian.AppendUint32(idxContent, uint32(keyLength))
-		idxContent, _ = binary.Append(idxContent, binary.BigEndian, currentKey)
-		idxContent = binary.BigEndian.AppendUint32(idxContent, uint32(blockOffset))
-		idxContent = binary.BigEndian.AppendUint32(idxContent, uint32(interBlockOffset))
-
-		// println("###", idxBlockOffset, idxBlockOffset%16, "-", miaow, miaow%16)
-
-		_, err := idx_file.Write(idxContent)
+		buf := new(bytes.Buffer)
+		binary.Write(buf, binary.BigEndian, uint32(keyLength))
+		binary.Write(buf, binary.BigEndian, currentKey)
+		binary.Write(buf, binary.BigEndian, uint32(blockOffset))
+		binary.Write(buf, binary.BigEndian, uint32(interBlockOffset))
+		_, err := idx_file.Write(buf.Bytes())
 		if err != nil {
 			// @TODO: handle remove SSTables & restore from WAL
 			panic(err)
 		}
 
+		// Write Summary file
 		if idxBlockOffsetPrevious != idxBlockOffset {
 			currentSummary.MaxKey = currentKey
 			currentSummary.MaxBlockOffset = idxBlockOffset
@@ -187,7 +200,10 @@ func (ss *SSTable[P]) WriteToDisc(table IterableTable[P]) error {
 		}
 
 		// Write Data file
-		_, err = dat_file.Write(node.Value)
+		buf = new(bytes.Buffer)
+		binary.Write(buf, binary.BigEndian, uint32(len(node.Value)))
+		buf.Write(node.Value)
+		_, err = dat_file.Write(buf.Bytes())
 		if err != nil {
 			// @TODO: handle remove SSTables & restore from WAL
 			panic(err)
@@ -198,8 +214,6 @@ func (ss *SSTable[P]) WriteToDisc(table IterableTable[P]) error {
 		// 	break
 		// }
 	}
-
-	// @TODO: ITT: TEST WITH full range
 
 	// @TODO: NEM JO A LAST OFFSET
 	// write last summary entry
