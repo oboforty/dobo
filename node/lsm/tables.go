@@ -141,10 +141,15 @@ func (t *LSMTreeTable[P]) loadSSTables() error {
 	if err != nil {
 		log.Fatal(err)
 	}
-	r, _ := regexp.Compile("^(.*)-([0-9]+).db$")
+	r, _ := regexp.Compile("^(.*)-?([0-9]+).dat$")
 
 	for _, file := range files {
 		match := r.FindStringSubmatch(file.Name())
+		if match == nil {
+			println("Skipping ", file.Name())
+			continue
+		}
+
 		genId, _ := strconv.Atoi(match[2])
 		// tableName := match[1]
 

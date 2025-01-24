@@ -5,7 +5,6 @@ import (
 	"sort"
 	"testing"
 	"time"
-	"unsafe"
 
 	"bytes"
 	"encoding/json"
@@ -68,7 +67,7 @@ func TestFlushMemTable(t *testing.T) {
 	// Arrange: Memtable shou ld be flushed after 10 items
 	const N_ITEMS int32 = 10
 
-	unitSize := memtable.RB_NODE_PTRS_SIZE + uint(unsafe.Sizeof(0)) + 8
+	unitSize := memtable.RB_NODE_PTRS_SIZE + 4 + 8
 	table, err := lsm.New[int32](&lsm.CfgTable{
 		Name: "test",
 
@@ -97,12 +96,16 @@ func TestFlushMemTable(t *testing.T) {
 	}
 
 	if !table.MemTable.IsFull() {
+		expectedSize := unitSize * uint(N_ITEMS)
+
+		t.Error("Memtable was expected to be full after: ", expectedSize)
 		t.FailNow()
 	}
 
 	// Act - flush memtable to disc
 	if err = table.FlushMemToDisc(); err != nil {
 		t.Error(err)
+		t.FailNow()
 	}
 
 	// Assert - memtable is cleared
