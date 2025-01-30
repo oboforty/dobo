@@ -1,0 +1,14 @@
+[Unit]
+Description=Dave1 Auth server
+After=network.target
+
+[Service]
+User=debian
+#WorkingDirectory=/app/test
+WorkingDirectory=/app/HellasApi
+ExecStart=/usr/local/bin/python3.12 -m uvicorn main:app --host 0.0.0.0 --port 8000 --uds /app/uvi.sock
+Restart=always
+Environment="DAVE_ENV=prod"
+
+[Install]
+WantedBy=multi-user.target

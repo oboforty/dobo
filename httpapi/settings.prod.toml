@@ -1,0 +1,8 @@
+reload = true
+verify_email_template = 'Dave1VerificationTpl'
+workers_count = 3
+
+[DB]
+database = 'hellas'
+dsn = 'sqlite+aiosqlite:////app/{database}.db'
+#dsn = 'postgresql+asyncpg://DoboApi:DoboApi@localhost:5432/{database}'

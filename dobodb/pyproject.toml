@@ -1,0 +1,14 @@
+[tool.poetry]
+name = "dobodb"
+version = "0.1.0"
+description = ""
+authors = ["Rajmund Csombordi <rajmund.csombordi@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.10"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
