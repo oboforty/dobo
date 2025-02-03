@@ -7,16 +7,22 @@ import (
 	"fmt"
 	"iter"
 
+	"github.com/oboforty/dobo/lsm/bloom"
 	"github.com/oboforty/dobo/lsm/core"
 	"github.com/oboforty/dobo/lsm/sstable/ioutils"
 )
 
 type IterableTable[P cmp.Ordered] interface {
-	// ByteSize() uint
+	Size() uint32
 	ItemIterator() iter.Seq[*core.ItemQuery[P]]
 }
 
 func (ss *SSTable[P]) WriteToDisc(table IterableTable[P]) error {
+	// SSTable.New has created a bloomtree, but create it again, now with an estimate for items!
+	ss.bloom = bloom.New(bloom.CfgBloomFilter{
+		MaxItems:          table.Size(),
+		FalsePositiveRate: ss.bloom.FalsePositiveRate(),
+	})
 
 	// @TODO: option for .dat file to be uncompressed?
 	dat_file, err := ioutils.NewBlockWriter(ss.tablePath+".dat", ss.compressionBlockSize, true)
@@ -25,7 +31,6 @@ func (ss *SSTable[P]) WriteToDisc(table IterableTable[P]) error {
 	}
 	defer dat_file.Close()
 
-	// @TODO: separate cfg for block size
 	idxBlockSize := ss.compressionBlockSize
 	idx_file, err := ioutils.NewBlockWriter(ss.tablePath+".idx", idxBlockSize, false)
 	if err != nil {
@@ -36,6 +41,7 @@ func (ss *SSTable[P]) WriteToDisc(table IterableTable[P]) error {
 
 	// idx block offsets for summary file
 	var idxBlockOffsetPrevious uint32 = 0
+	var totalItems uint32 = 0
 
 	// estimate & reserve summaries
 	// ss.summaries = make([]IndexSummary[P], 0, )
@@ -98,14 +104,14 @@ func (ss *SSTable[P]) WriteToDisc(table IterableTable[P]) error {
 			panic(err)
 		}
 
-		// asd += 1
-		// if asd > 10 {
-		// 	break
-		// }
+		// Write Bloom Filter
+		ss.bloom.Add(currentKey)
+
+		totalItems += 1
 	}
 
 	// @TODO: NEM JO A LAST OFFSET
-	// write last summary entry
+	// 				write last summary entry
 	currentSummary.MaxKey = currentKey
 	currentSummary.MaxBlockOffset = idxBlockOffsetPrevious
 
@@ -115,11 +121,17 @@ func (ss *SSTable[P]) WriteToDisc(table IterableTable[P]) error {
 	}
 	ss.summaries = append(ss.summaries, *currentSummary)
 
-	// @TOOD: WRITE TO DISC
+	// Write Bloom to disc
+	ss.bloom.WriteToDisc(ss.tablePath + ".bf")
 
 	// todo: collect stats & write? @later
 
 	// todo: detect HERE? or in a scheduled task when to trigger the compaction goroutine?
+
+	if totalItems != table.Size() {
+		// non-fatal error, but it should be concerning
+		return fmt.Errorf("[SST] Write final size mismatch: %d != %d", totalItems, table.Size())
+	}
 
 	return nil
 }

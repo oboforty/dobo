@@ -2,7 +2,6 @@ package lsm
 
 import (
 	"cmp"
-	"iter"
 	"log"
 
 	"github.com/oboforty/dobo/lsm/core"
@@ -27,6 +26,8 @@ type SSTable[P cmp.Ordered] interface {
 }
 
 type MemTable[P cmp.Ordered] interface {
+	sstable.IterableTable[P]
+
 	Get(P) *core.ItemQuery[P]
 	Upsert(*core.ItemWrite[P])
 	// Delete(interface{})
@@ -34,8 +35,6 @@ type MemTable[P cmp.Ordered] interface {
 	ByteSize() uint32
 	IsFull() bool
 	Clear()
-
-	ItemIterator() iter.Seq[*core.ItemQuery[P]]
 }
 
 type WAL interface {

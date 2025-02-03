@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"encoding/binary"
 	"fmt"
+	"io"
 	"os"
 	"strconv"
 	"strings"
@@ -18,6 +19,9 @@ func (ss *SSTable[P]) LoadFromDisc() error {
 	}
 	defer file.Close()
 
+	// load bloom filter
+	ss.bloom.LoadFromDisc(ss.tablePath + ".bf")
+
 	// 1st part - (ascii) metadata
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
@@ -31,6 +35,10 @@ func (ss *SSTable[P]) LoadFromDisc() error {
 		sv, err := strconv.ParseFloat(spl[1], 32)
 
 		if err != nil {
+			if err == io.EOF {
+				break
+			}
+
 			continue
 		}
 		ss.Statistics[spl[0]] = float32(sv)
@@ -44,8 +52,13 @@ func (ss *SSTable[P]) LoadFromDisc() error {
 
 		err = ioutils.ReadDynamicValue[uint32](file, &sum.MinKey)
 		if err != nil {
+			if err == io.EOF {
+				// EOF really should only occur here
+				break
+			}
 			return err
 		}
+
 		err = ioutils.ReadDynamicValue[uint32](file, &sum.MaxKey)
 		if err != nil {
 			return err
@@ -55,15 +68,12 @@ func (ss *SSTable[P]) LoadFromDisc() error {
 		if err != nil {
 			return err
 		}
+
 		err = binary.Read(file, binary.BigEndian, sum.MaxBlockOffset)
 		if err != nil {
 			return err
 		}
 	}
 
-	// @TODO: load bloom filter
-
-	// @TODO: load summary & stats file
-
-	// @TODO:
+	return nil
 }

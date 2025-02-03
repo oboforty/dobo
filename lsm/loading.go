@@ -8,6 +8,7 @@ import (
 	"regexp"
 	"strconv"
 
+	"github.com/oboforty/dobo/lsm/bloom"
 	"github.com/oboforty/dobo/lsm/core"
 	"github.com/oboforty/dobo/lsm/memtable"
 	"github.com/oboforty/dobo/lsm/sstable"
@@ -29,7 +30,7 @@ var tableDefaults = CfgTable{
 	},
 	SSTable: sstable.CfgSSTable{
 		CompressionBlockSize: 16384,
-		BloomFilter: sstable.CfgBloomFilter{
+		BloomFilter: bloom.CfgBloomFilter{
 			FalsePositiveRate: 0.1,
 		},
 	},
@@ -80,8 +81,6 @@ func (t *LSMTreeTable[P]) loadSSTables() error {
 		}
 
 		genId, _ := strconv.Atoi(match[2])
-		// tableName := match[1]
-
 		sst := sstable.New[P](
 			&t.cfg.SSTable,
 			t.cfg.Name,

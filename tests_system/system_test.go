@@ -2,6 +2,8 @@ package tests_system
 
 import (
 	"iter"
+	"os"
+	"path/filepath"
 	"sort"
 	"testing"
 	"time"
@@ -10,6 +12,7 @@ import (
 	"encoding/json"
 
 	"github.com/oboforty/dobo/lsm"
+	"github.com/oboforty/dobo/lsm/bloom"
 	"github.com/oboforty/dobo/lsm/core"
 	"github.com/oboforty/dobo/lsm/memtable"
 	"github.com/oboforty/dobo/lsm/sstable"
@@ -28,6 +31,7 @@ func TestReadWriteMemTable(t *testing.T) {
 
 	if err != nil {
 		t.Error(err)
+		t.FailNow()
 	}
 
 	data := map[string]interface{}{
@@ -41,6 +45,7 @@ func TestReadWriteMemTable(t *testing.T) {
 	serialized, err := json.Marshal(data)
 	if err != nil {
 		t.Error(err)
+		t.FailNow()
 	}
 
 	var key int32 = 1234567890
@@ -167,6 +172,10 @@ func (t *TestIterable) ItemIterator() iter.Seq[*core.ItemQuery[int32]] {
 	}
 }
 
+func (t *TestIterable) Size() uint32 {
+	return uint32(t.NItems)
+}
+
 func TestWriteReadSSTable(t *testing.T) {
 	CapturePrint(t)
 
@@ -185,7 +194,9 @@ func TestWriteReadSSTable(t *testing.T) {
 			// @TODO: conver from relative to tests into absolute path
 			DBPath:               dbpath,
 			CompressionBlockSize: BLOCK_SIZE,
-			// DataSerialization: "jsonb",
+			BloomFilter: bloom.CfgBloomFilter{
+				FalsePositiveRate: 0.1,
+			},
 		}, tablename, *pkt, 0,
 	)
 
@@ -202,11 +213,16 @@ func TestWriteReadSSTable(t *testing.T) {
 
 	if err != nil {
 		t.Error(err)
+		t.FailNow()
 	}
 
 	// Assert - correct idx file
 	// idx file entries should be (3 * 4 + 4 = 16 bytes (key itself is ))
 	expectedItem := iter.RndItem
+
+	if expectedItem == nil {
+		t.Fatal("no expectedItem.. why?")
+	}
 
 	// Act - read from disc
 	actualItem := sstable.Get(expectedItem.PartKey)
@@ -223,4 +239,28 @@ func TestWriteReadSSTable(t *testing.T) {
 	}
 
 	// @TODO: assert dat & idx file content?
+}
+
+func TestBloomFilter(t *testing.T) {
+	CapturePrint(t)
+	cwd, _ := os.Getwd()
+
+	dbPath := filepath.Join(cwd, "..", "tmp")
+	if err := utils.EnsurePath(dbPath); err != nil {
+		panic(err)
+	}
+
+	pkt, _ := core.GetTypeInfo[int32]()
+	sstable := sstable.New[int32](
+		&sstable.CfgSSTable{
+			DBPath:               dbPath,
+			CompressionBlockSize: 64 * 1024,
+			BloomFilter: bloom.CfgBloomFilter{
+				FalsePositiveRate: 0.1,
+			},
+		}, "nemtom", *pkt, 0,
+	)
+
+	// @TODO: how to system test bloom filters? maybe not?
+	println(sstable.GenerationId)
 }

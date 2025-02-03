@@ -69,11 +69,6 @@ func (rb *RBMemT[P]) Upsert(item *core.ItemWrite[P]) {
 // 	rb.tree.Remove(partKey)
 // }
 
-func (rb *RBMemT[P]) Clear() {
-	rb.tree.Clear()
-	rb.byteSize = 0
-}
-
 func (rb *RBMemT[P]) ItemIterator() iter.Seq[*core.ItemQuery[P]] {
 	return func(yield func(*core.ItemQuery[P]) bool) {
 
@@ -95,4 +90,13 @@ func (rb *RBMemT[P]) ItemIterator() iter.Seq[*core.ItemQuery[P]] {
 			}
 		}
 	}
+}
+
+func (rb *RBMemT[P]) Size() uint32 {
+	return uint32(rb.tree.Size())
+}
+
+func (rb *RBMemT[P]) Clear() {
+	rb.tree.Clear()
+	rb.byteSize = 0
 }

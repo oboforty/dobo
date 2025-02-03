@@ -2,9 +2,19 @@ package sstable
 
 import (
 	"cmp"
+	"path/filepath"
 
+	"github.com/oboforty/dobo/lsm/bloom"
 	"github.com/oboforty/dobo/lsm/core"
 )
+
+type BloomFilter interface {
+	Add(val interface{}) error
+	Test(val interface{}) (bool, error)
+	FalsePositiveRate() float64
+	WriteToDisc(string) error
+	LoadFromDisc(string) error
+}
 
 type SSTable[P cmp.Ordered] struct {
 	GenerationId    int
@@ -14,7 +24,7 @@ type SSTable[P cmp.Ordered] struct {
 	tablePath            string
 	compressionBlockSize uint32
 
-	bloom     *bloomFilter
+	bloom     BloomFilter
 	summaries []IndexSummary[P]
 }
 
@@ -22,7 +32,7 @@ type CfgSSTable struct {
 	DBPath               string `toml:"path"`
 	CompressionBlockSize uint32 `toml:"block_size"`
 
-	BloomFilter CfgBloomFilter
+	BloomFilter bloom.CfgBloomFilter
 }
 
 type IndexSummary[P cmp.Ordered] struct {
@@ -35,13 +45,16 @@ type IndexSummary[P cmp.Ordered] struct {
 	PartKeyTypeInfo *core.TypeInfo
 }
 
-func New[P cmp.Ordered](cfg *CfgSSTable, tablePath string, pkt core.TypeInfo, id int) *SSTable[P] {
+func New[P cmp.Ordered](cfg *CfgSSTable, tableName string, pkt core.TypeInfo, id int) *SSTable[P] {
 	ss := &SSTable[P]{
 		partKeyTypeInfo:      pkt,
-		tablePath:            tablePath,
+		tablePath:            filepath.Join(cfg.DBPath, tableName),
 		GenerationId:         id,
 		compressionBlockSize: cfg.CompressionBlockSize,
-		// bloom:             newBloomFilter(cfg.BloomFilter),
+
+		// Bloom filter doesn't really get created here,
+		// as it's actually created after first disc write
+		bloom: bloom.New(cfg.BloomFilter),
 	}
 
 	return ss
@@ -52,13 +65,18 @@ func (ss *SSTable[P]) GetGenerationId() int {
 }
 
 func (ss *SSTable[P]) Get(partKey P) *core.ItemQuery[P] {
-	// if !ss.bloomComp(ss.bloom, partKey) {
-	// 	// key is defo not in this table
-	// 	return nil
-	// }
-	// 		println("###", keyLength, "OFF:", blockOffset, interBlockOffset, fmt.Sprintf("value:\t %v", oof))
+	ok, err := ss.bloom.Test(partKey)
+
+	if err != nil {
+		// @TODO: log? binary errors?
+	}
+
+	if !ok {
+		return nil
+	}
 
 	// @TODO: load summary from dsic if nil!
+
 	var idxRange *IndexSummary[P]
 	for _, sum := range ss.summaries {
 		if sum.MinKey <= partKey && partKey <= sum.MaxKey {
@@ -105,8 +123,6 @@ func (ss *SSTable[P]) Get(partKey P) *core.ItemQuery[P] {
 		FoundIn: core.FOUND_AT_SS,
 		// FoundSSLevel: ss.Level,
 	}
-
-	return nil
 }
 
 // func (ss *SSTable[P]) Upsert(partKey interface{}, value interface{}) {
