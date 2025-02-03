@@ -11,7 +11,6 @@ const (
 	DTYPE_FLOAT64 DataType = "float64"
 	DTYPE_BYTES   DataType = "bytes"
 	DTYPE_STRING  DataType = "string"
-	DTYPE_TIME    DataType = "time"
 )
 
 type FindStatus = uint8
@@ -39,14 +38,3 @@ type ItemQuery[K cmp.Ordered] struct {
 	FoundSSLevel int8
 	FoundSSIdx   uint32
 }
-
-type DynamicValueSerialization string
-
-const (
-	// Values are stored as json lines file
-	STORE_TYPE_JSONL = "jsonl"
-	// Values are serialized as gob
-	STORE_TYPE_GOB = "gob"
-	// Values are serialized in their binary formats
-	STORE_TYPE_BINARY = "binary"
-)

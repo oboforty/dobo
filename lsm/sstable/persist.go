@@ -2,17 +2,24 @@ package sstable
 
 import (
 	"bytes"
+	"cmp"
 	"encoding/binary"
 	"fmt"
+	"iter"
 
 	"github.com/oboforty/dobo/lsm/core"
 	"github.com/oboforty/dobo/lsm/sstable/ioutils"
 )
 
+type IterableTable[P cmp.Ordered] interface {
+	// ByteSize() uint
+	ItemIterator() iter.Seq[*core.ItemQuery[P]]
+}
+
 func (ss *SSTable[P]) WriteToDisc(table IterableTable[P]) error {
 
 	// @TODO: option for .dat file to be uncompressed?
-	dat_file, err := ioutils.NewBlockWriter(ss.dbpath+".dat", ss.compressionBlockSize, true)
+	dat_file, err := ioutils.NewBlockWriter(ss.tablePath+".dat", ss.compressionBlockSize, true)
 	if err != nil {
 		return fmt.Errorf("failed to open file: %w", err)
 	}
@@ -20,7 +27,7 @@ func (ss *SSTable[P]) WriteToDisc(table IterableTable[P]) error {
 
 	// @TODO: separate cfg for block size
 	idxBlockSize := ss.compressionBlockSize
-	idx_file, err := ioutils.NewBlockWriter(ss.dbpath+".idx", idxBlockSize, false)
+	idx_file, err := ioutils.NewBlockWriter(ss.tablePath+".idx", idxBlockSize, false)
 	if err != nil {
 		return fmt.Errorf("failed to open file: %w", err)
 	}
@@ -28,7 +35,7 @@ func (ss *SSTable[P]) WriteToDisc(table IterableTable[P]) error {
 	defer idx_file.Close()
 
 	// idx block offsets for summary file
-	var idxBlockOffsetPrevious int32 = 0
+	var idxBlockOffsetPrevious uint32 = 0
 
 	// estimate & reserve summaries
 	// ss.summaries = make([]IndexSummary[P], 0, )
@@ -55,10 +62,10 @@ func (ss *SSTable[P]) WriteToDisc(table IterableTable[P]) error {
 
 		// Write Index File (3 int32 + the dynamic sized key itself)
 		buf := new(bytes.Buffer)
-		binary.Write(buf, binary.BigEndian, uint32(keyLength))
+		binary.Write(buf, binary.BigEndian, keyLength)
 		binary.Write(buf, binary.BigEndian, currentKey)
-		binary.Write(buf, binary.BigEndian, uint32(blockOffset))
-		binary.Write(buf, binary.BigEndian, uint32(interBlockOffset))
+		binary.Write(buf, binary.BigEndian, blockOffset)
+		binary.Write(buf, binary.BigEndian, interBlockOffset)
 		_, err := idx_file.Write(buf.Bytes())
 		if err != nil {
 			// @TODO: handle remove SSTables & restore from WAL

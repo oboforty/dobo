@@ -2,59 +2,44 @@ package sstable
 
 import (
 	"cmp"
-	"iter"
-	"path/filepath"
-	"strconv"
 
 	"github.com/oboforty/dobo/lsm/core"
-	"github.com/oboforty/dobo/lsm/utils"
 )
 
-type IterableTable[P cmp.Ordered] interface {
-	// ByteSize() uint
-	ItemIterator() iter.Seq[*core.ItemQuery[P]]
-}
-
 type SSTable[P cmp.Ordered] struct {
-	GenerationId int
-	Statistics   map[string]float32
+	GenerationId    int
+	Statistics      map[string]float32
+	partKeyTypeInfo core.TypeInfo
 
-	partKeyTypeInfo      core.TypeInfo
-	dbpath               string
-	dataSerialization    core.DynamicValueSerialization
-	compressionBlockSize int
+	tablePath            string
+	compressionBlockSize uint32
 
 	bloom     *bloomFilter
 	summaries []IndexSummary[P]
 }
 
 type CfgSSTable struct {
-	BasePath             string                         `toml:"base_path"`
-	DataSerialization    core.DynamicValueSerialization `toml:"data_serialization"`
-	CompressionBlockSize int                            `toml:"compression_block_size"`
+	DBPath               string `toml:"path"`
+	CompressionBlockSize uint32 `toml:"block_size"`
 
-	BloomFilter CfgBloomFilter `toml:"bloom_filter"`
+	BloomFilter CfgBloomFilter
 }
 
 type IndexSummary[P cmp.Ordered] struct {
 	MinKey         P
-	MinBlockOffset int32
+	MinBlockOffset uint32
 	MaxKey         P
-	MaxBlockOffset int32
+	MaxBlockOffset uint32
 
 	Id              int16
 	PartKeyTypeInfo *core.TypeInfo
 }
 
-func New[P cmp.Ordered](cfg *CfgSSTable, tableName string, pkt core.TypeInfo, id int) *SSTable[P] {
-	dbpath := filepath.Join(cfg.BasePath, tableName, strconv.Itoa(id))
-	utils.EnsurePath(filepath.Dir(dbpath))
-
+func New[P cmp.Ordered](cfg *CfgSSTable, tablePath string, pkt core.TypeInfo, id int) *SSTable[P] {
 	ss := &SSTable[P]{
 		partKeyTypeInfo:      pkt,
-		dbpath:               dbpath,
+		tablePath:            tablePath,
 		GenerationId:         id,
-		dataSerialization:    cfg.DataSerialization,
 		compressionBlockSize: cfg.CompressionBlockSize,
 		// bloom:             newBloomFilter(cfg.BloomFilter),
 	}
@@ -86,7 +71,7 @@ func (ss *SSTable[P]) Get(partKey P) *core.ItemQuery[P] {
 	}
 
 	khit, err := SearchOffsetInIndexFile(
-		ss.dbpath+".idx",
+		ss.tablePath+".idx",
 		idxRange.MinBlockOffset,
 		idxRange.MaxBlockOffset,
 		partKey,
@@ -100,7 +85,7 @@ func (ss *SSTable[P]) Get(partKey P) *core.ItemQuery[P] {
 	}
 
 	vhit, err := SearchDataFileGzipBlock(
-		ss.dbpath+".dat",
+		ss.tablePath+".dat",
 		int32(khit.BlockOffset),
 		int32(khit.InterBlockOffset),
 		partKey,

@@ -12,7 +12,7 @@ import (
 )
 
 // Calculate the size of a RB Tree Node, without the Key & Value sizes
-const RB_NODE_PTRS_SIZE = uint(unsafe.Sizeof(rbt.Node[int8, int8]{}) - (unsafe.Sizeof(int8(0)) * 2))
+const RB_NODE_PTRS_SIZE = uint32(unsafe.Sizeof(rbt.Node[int8, int8]{}) - (unsafe.Sizeof(int8(0)) * 2))
 
 // MemTable implementing Red-Black Balanced Trees
 type RBMemT[P cmp.Ordered] struct {
@@ -61,7 +61,7 @@ func (rb *RBMemT[P]) Upsert(item *core.ItemWrite[P]) {
 	}
 
 	// Value & Node structure size
-	rb.byteSize += uint(len(item.Value)) + RB_NODE_PTRS_SIZE
+	rb.byteSize += uint32(len(item.Value)) + RB_NODE_PTRS_SIZE
 }
 
 // @TODO: Tombstone entry!

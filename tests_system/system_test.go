@@ -73,11 +73,11 @@ func TestFlushMemTable(t *testing.T) {
 
 		MemTable: memtable.CfgMemtable{
 			Type:        memtable.MEMTYPE_REDBLACK,
-			MaxByteSize: unitSize * uint(N_ITEMS),
+			MaxByteSize: unitSize * uint32(N_ITEMS),
 		},
 		SSTable: sstable.CfgSSTable{
 			// @TODO: conver from relative to tests into absolute path
-			BasePath: "/home/rajmund_csombordi/dev/dobo/nemtom",
+			DBPath: "/home/rajmund_csombordi/dev/dobo/nemtom",
 			// DataSerialization: "jsonb",
 			CompressionBlockSize: 64 * 1024,
 		},
@@ -96,7 +96,7 @@ func TestFlushMemTable(t *testing.T) {
 	}
 
 	if !table.MemTable.IsFull() {
-		expectedSize := unitSize * uint(N_ITEMS)
+		expectedSize := unitSize * uint32(N_ITEMS)
 
 		t.Error("Memtable was expected to be full after: ", expectedSize)
 		t.FailNow()
@@ -183,7 +183,7 @@ func TestWriteReadSSTable(t *testing.T) {
 	sstable := sstable.New[int32](
 		&sstable.CfgSSTable{
 			// @TODO: conver from relative to tests into absolute path
-			BasePath:             dbpath,
+			DBPath:               dbpath,
 			CompressionBlockSize: BLOCK_SIZE,
 			// DataSerialization: "jsonb",
 		}, tablename, *pkt, 0,

@@ -1,10 +1,10 @@
-package socket
+package node
 
 import (
 	"io"
 
 	cmd "github.com/oboforty/dobo/node/commands"
-	ser "github.com/oboforty/dobo/node/socket/serialize"
+	ser "github.com/oboforty/dobo/node/serialize"
 )
 
 var cmds map[byte]ser.CommandConstructor = map[byte]ser.CommandConstructor{

@@ -30,7 +30,7 @@ type ValueSearchHit struct {
 func SearchOffsetInIndexFile[P comparable](
 	filename string,
 	startBlockOffset,
-	stopBlockOffset int32,
+	stopBlockOffset uint32,
 	key P,
 ) (*IdxSearchHit, error) {
 	file, err := os.Open(filename)
@@ -80,9 +80,9 @@ func SearchOffsetInIndexFile[P comparable](
 			}, nil
 		}
 
-		keyLength := int32(len(keyBytes))
+		keyLength := uint32(len(keyBytes))
 		startBlockOffset += 3*4 + keyLength
-		totalBytes += uint32(3*4 + keyLength)
+		totalBytes += 3*4 + keyLength
 		if startBlockOffset > stopBlockOffset {
 			break
 		}

@@ -20,23 +20,23 @@ type bloomFilter struct {
 }
 
 type CfgBloomFilter struct {
-	Bits          uint `toml:"bits"`
-	HashFunctions uint `toml:"hash_functions"`
+	Bits          uint32
+	HashFunctions uint32
 
-	MaxItems          uint    `toml:"max_items"`
-	FalsePositiveRate float64 `toml:"false_positive_rate"`
+	MaxItems          uint32
+	FalsePositiveRate float64
 }
 
 func newBloomFilter(cfg CfgBloomFilter) (bf *bloomFilter) {
 	if cfg.MaxItems > 0 {
 		if cfg.Bits > 0 || cfg.HashFunctions > 0 {
-			slog.Warn("[BloomFilter] redundant config: either define MaxItems+FalsePositiveRates OR Bits+HashFunctions in config!")
+			slog.Warn("[Bloom] redundant config: either define MaxItems+FalsePositiveRates OR Bits+HashFunctions in config!")
 		}
 
 		// convenience params
-		bf.bloom = bloom.NewWithEstimates(cfg.MaxItems, cfg.FalsePositiveRate)
+		bf.bloom = bloom.NewWithEstimates(uint(cfg.MaxItems), cfg.FalsePositiveRate)
 	} else {
-		bf.bloom = bloom.New(cfg.Bits, cfg.HashFunctions)
+		bf.bloom = bloom.New(uint(cfg.Bits), uint(cfg.HashFunctions))
 	}
 
 	// load if exists

@@ -12,7 +12,7 @@ import (
 )
 
 func (ss *SSTable[P]) LoadFromDisc() error {
-	file, err := os.Open(ss.dbpath + ".dat")
+	file, err := os.Open(ss.tablePath + ".dat")
 	if err != nil {
 		return fmt.Errorf("failed to open file: %w", err)
 	}

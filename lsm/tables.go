@@ -10,16 +10,14 @@ import (
 	"github.com/oboforty/dobo/lsm/sstable"
 )
 
-type MemTable[P cmp.Ordered] interface {
-	Get(P) *core.ItemQuery[P]
-	Upsert(*core.ItemWrite[P])
-	// Delete(interface{})
+type LSMTreeTable[P cmp.Ordered] struct {
+	cfg             CfgTable
+	partKeyTypeInfo core.TypeInfo
 
-	ByteSize() uint
-	IsFull() bool
-	Clear()
-
-	ItemIterator() iter.Seq[*core.ItemQuery[P]]
+	// Components
+	MemTable MemTable[P]
+	SSTables []SSTable[P] // latest table is the newest
+	Wal      WAL
 }
 
 type SSTable[P cmp.Ordered] interface {
@@ -28,34 +26,24 @@ type SSTable[P cmp.Ordered] interface {
 	GetGenerationId() int
 }
 
+type MemTable[P cmp.Ordered] interface {
+	Get(P) *core.ItemQuery[P]
+	Upsert(*core.ItemWrite[P])
+	// Delete(interface{})
+
+	ByteSize() uint32
+	IsFull() bool
+	Clear()
+
+	ItemIterator() iter.Seq[*core.ItemQuery[P]]
+}
+
 type WAL interface {
 }
 
-type CfgTable struct {
-	Name string
-	// Partitions CfgPartitions        `toml:"partitions"`
-	MemTable memtable.CfgMemtable `toml:"memtable"`
-	SSTable  sstable.CfgSSTable   `toml:"sstable"`
-}
-
-// type CfgPartitions struct {
-// 	ClusterSize int `toml:"cluster_size"`
-// 	// TokenMin int
-// 	// TokenMax int
-// }
-
-type LSMTreeTable[P cmp.Ordered] struct {
-	TableName       string
-	partKeyTypeInfo core.TypeInfo
-	cfg             CfgTable
-
-	// Components
-	MemTable MemTable[P]
-	SSTables []SSTable[P] // latest table is the newest
-	Wal      WAL
-}
-
 func New[P cmp.Ordered](cfg *CfgTable) (*LSMTreeTable[P], error) {
+	cfg.ApplyDefaults()
+
 	t := &LSMTreeTable[P]{
 		cfg: *cfg,
 	}
@@ -65,10 +53,6 @@ func New[P cmp.Ordered](cfg *CfgTable) (*LSMTreeTable[P], error) {
 		return nil, err
 	}
 	t.partKeyTypeInfo = *typeInfo
-
-	if cfg.MemTable.Type == "" {
-		cfg.MemTable.Type = memtable.MEMTYPE_REDBLACK
-	}
 
 	t.createMemtable()
 	t.loadSSTables()
@@ -145,14 +129,20 @@ func (t *LSMTreeTable[P]) FlushMemToDisc() error {
 	t.createMemtable()
 	defer memtOld.Clear()
 
+	// @TODO: pass db path?
+
 	// @TODO: new & pass cfg in one
 	ss := sstable.New[P](
 		&t.cfg.SSTable,
-		t.TableName,
+		t.cfg.Name,
 		t.partKeyTypeInfo,
 		t.CurrentGenerationId()+1,
 	)
 	t.SSTables = append(t.SSTables, ss)
 
 	return ss.WriteToDisc(memtOld)
+}
+
+func (t *LSMTreeTable[P]) TableName() string {
+	return t.cfg.Name
 }

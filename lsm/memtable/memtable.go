@@ -16,17 +16,17 @@ const (
 
 type CfgMemtable struct {
 	Type        CfgMemtableType `toml:"type"`
-	MaxByteSize uint            `toml:"max_byte_size"`
+	MaxByteSize uint32          `toml:"max_size"`
 }
 
 type MemT[P cmp.Ordered] struct {
 	partKeyTypeInfo *core.TypeInfo
 
-	maxSize  uint
-	byteSize uint
+	maxSize  uint32
+	byteSize uint32
 }
 
-func (m *MemT[P]) ByteSize() uint {
+func (m *MemT[P]) ByteSize() uint32 {
 	return m.byteSize
 }
 

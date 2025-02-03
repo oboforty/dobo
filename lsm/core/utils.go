@@ -8,7 +8,7 @@ import (
 type TypeInfo struct {
 	Type          DataType
 	IsDynamicSize bool
-	StaticSize    uint
+	StaticSize    uint32
 }
 
 func GetTypeInfo[T any]() (*TypeInfo, error) {
@@ -38,34 +38,34 @@ func GetTypeInfo[T any]() (*TypeInfo, error) {
 	}
 
 	if !typeInfo.IsDynamicSize {
-		typeInfo.StaticSize = uint(unsafe.Sizeof(asd))
+		typeInfo.StaticSize = uint32(unsafe.Sizeof(asd))
 	}
 
 	return typeInfo, nil
 }
 
-func GetSize(v interface{}) uint {
+func GetSize(v interface{}) uint32 {
 	switch v := any(v).(type) {
 	case string:
-		return uint(len(v))
+		return uint32(len(v))
 	case []byte:
-		return uint(len(v))
+		return uint32(len(v))
 	default:
-		return uint(unsafe.Sizeof(v))
+		return uint32(unsafe.Sizeof(v))
 	}
 }
 
-func GetSizeTypeInfo(v interface{}, typeInfo *TypeInfo) uint {
+func GetSizeTypeInfo(v interface{}, typeInfo *TypeInfo) uint32 {
 	if !typeInfo.IsDynamicSize {
 		return typeInfo.StaticSize
 	}
 
 	switch v := any(v).(type) {
 	case string:
-		return uint(len(v))
+		return uint32(len(v))
 	case []byte:
-		return uint(len(v))
+		return uint32(len(v))
 	default:
-		return uint(unsafe.Sizeof(v))
+		return uint32(unsafe.Sizeof(v))
 	}
 }
