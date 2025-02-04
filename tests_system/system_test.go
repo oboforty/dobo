@@ -1,27 +1,21 @@
 package tests_system
 
 import (
-	"iter"
-	"os"
-	"path/filepath"
-	"sort"
 	"testing"
-	"time"
 
 	"bytes"
 	"encoding/json"
 
 	"github.com/oboforty/dobo/lsm"
-	"github.com/oboforty/dobo/lsm/bloom"
 	"github.com/oboforty/dobo/lsm/core"
 	"github.com/oboforty/dobo/lsm/memtable"
 	"github.com/oboforty/dobo/lsm/sstable"
-	"github.com/oboforty/dobo/lsm/utils"
-
-	"math/rand/v2"
 )
 
+// Tests read & write on memory object only
 func TestReadWriteMemTable(t *testing.T) {
+	CapturePrint(t)
+
 	table, err := lsm.New[int32](&lsm.CfgTable{
 		MemTable: memtable.CfgMemtable{
 			Type:        memtable.MEMTYPE_REDBLACK,
@@ -64,39 +58,32 @@ func TestReadWriteMemTable(t *testing.T) {
 	if !bytes.Equal(val, serialized) {
 		t.FailNow()
 	}
+	if string(val) != `{"asd":213352,"nested":{"fos":"opoly"},"tes":"show"}` {
+		t.Logf("Wrong string: %s", string(val))
+		t.FailNow()
+	}
 }
 
+// Tests writing to disc
 func TestFlushMemTable(t *testing.T) {
-	CapturePrint(t)
-
-	// Arrange: Memtable shou ld be flushed after 10 items
+	// Arrange: Memtable should be flushed after 10 items
 	const N_ITEMS int32 = 10
-
 	unitSize := memtable.RB_NODE_PTRS_SIZE + 4 + 8
-	table, err := lsm.New[int32](&lsm.CfgTable{
-		Name: "test",
+	cfg := SetupTable(t, true,
+		unitSize*uint32(N_ITEMS), // mem size
+		64*1024,                  // compression block size
+	)
 
-		MemTable: memtable.CfgMemtable{
-			Type:        memtable.MEMTYPE_REDBLACK,
-			MaxByteSize: unitSize * uint32(N_ITEMS),
-		},
-		SSTable: sstable.CfgSSTable{
-			// @TODO: conver from relative to tests into absolute path
-			DBPath: "/home/rajmund_csombordi/dev/dobo/nemtom",
-			// DataSerialization: "jsonb",
-			CompressionBlockSize: 64 * 1024,
-		},
-	})
-
+	table, err := lsm.New[int32](cfg)
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
 
 	// fill memtable up with string[ 8]
 	for i := range N_ITEMS {
 		table.Upsert(&core.ItemWrite[int32]{
 			PartKey: i,
-			Value:   utils.RandAsciiByte(8),
+			Value:   RandAsciiByte(8),
 		})
 	}
 
@@ -124,84 +111,23 @@ func TestFlushMemTable(t *testing.T) {
 	}
 }
 
-type TestIterable struct {
-	NItems       uint
-	ItemSize     uint
-	Randomize    bool
-	FoundSSLevel int8
-
-	RndItem *core.ItemQuery[int32]
-}
-
-func (t *TestIterable) ItemIterator() iter.Seq[*core.ItemQuery[int32]] {
-	var rnd *rand.Rand
-	if t.Randomize {
-		rnd = rand.New(rand.NewPCG(uint64(time.Now().UnixNano()), uint64(time.Now().UnixNano())))
-	} else {
-		rnd = rand.New(rand.NewPCG(1337, 0))
-	}
-
-	keys := make([]int32, 0, t.NItems)
-	for range t.NItems {
-		keys = append(keys, rnd.Int32N(1000000))
-	}
-	sort.Slice(keys, func(i, j int) bool {
-		return keys[i] < keys[j]
-	})
-
-	return func(yield func(*core.ItemQuery[int32]) bool) {
-
-		for i := range t.NItems {
-			item := &core.ItemQuery[int32]{
-				PartKey: keys[i],
-				Value:   utils.RandAsciiByte(int(t.ItemSize)),
-
-				FoundIn:      core.FOUND_AT_SS,
-				FoundSSLevel: t.FoundSSLevel,
-			}
-
-			// pick out a random item for later testing
-			if t.RndItem == nil && i > t.NItems/3 && rnd.Float32() > 0.9 {
-				t.RndItem = item
-			}
-
-			if !yield(item) {
-				return
-			}
-		}
-	}
-}
-
-func (t *TestIterable) Size() uint32 {
-	return uint32(t.NItems)
-}
-
-func TestWriteReadSSTable(t *testing.T) {
-	CapturePrint(t)
-
+// Writes a bunch of items (10 blocks) to disc
+// Then tests if an item can be retrieved
+func TestWriteReadItemSSTable(t *testing.T) {
 	// Arrange: Memtable shou ld be flushed after 10 items
 	const VAL_SIZE uint = 10
 	const BLOCK_SIZE = 64 * 1024
 	n_items := 10 * (BLOCK_SIZE / VAL_SIZE)
-
-	dbpath := "/home/rajmund_csombordi/dev/dobo/"
-	tablename := "nemtom"
-
+	cfg := SetupTable(t, true, 0, BLOCK_SIZE)
 	pkt, _ := core.GetTypeInfo[int32]()
 
 	sstable := sstable.New[int32](
-		&sstable.CfgSSTable{
-			// @TODO: conver from relative to tests into absolute path
-			DBPath:               dbpath,
-			CompressionBlockSize: BLOCK_SIZE,
-			BloomFilter: bloom.CfgBloomFilter{
-				FalsePositiveRate: 0.1,
-			},
-		}, tablename, *pkt, 0,
+		&cfg.SSTable, cfg.Name, *pkt, 0,
 	)
 
+	// at seed=1337, generated item values are:
+	// 14,20,31,33,74,89,96,259
 	iter := TestIterable{
-		// at seed=1337, item values are 14,20,31,33,74,89,96,259
 		Randomize:    false,
 		NItems:       n_items,
 		ItemSize:     VAL_SIZE,
@@ -209,9 +135,7 @@ func TestWriteReadSSTable(t *testing.T) {
 	}
 
 	// Act - write to disc
-	err := sstable.WriteToDisc(&iter)
-
-	if err != nil {
+	if err := sstable.WriteToDisc(&iter); err != nil {
 		t.Error(err)
 		t.FailNow()
 	}
@@ -241,26 +165,34 @@ func TestWriteReadSSTable(t *testing.T) {
 	// @TODO: assert dat & idx file content?
 }
 
-func TestBloomFilter(t *testing.T) {
-	CapturePrint(t)
-	cwd, _ := os.Getwd()
+// Creates and saves an LSM table to disc,
+// Then checks if the same table's configs can be reloaded from a fresh start
+func TestWriteReadConfig(t *testing.T) {
+	// Arrange - random cfg values
+	cfg := SetupTable(t, true, 1234, 64*1024)
+	pkt, _ := core.GetTypeInfo[int32]()
 
-	dbPath := filepath.Join(cwd, "..", "tmp")
-	if err := utils.EnsurePath(dbPath); err != nil {
-		panic(err)
+	sst1 := sstable.New[int32](&cfg.SSTable, cfg.Name, *pkt, 0)
+
+	// Arrange - just write one item to have summary & index page
+	if err := sst1.WriteToDisc(&TestIterable{
+		Randomize: false, NItems: 2, ItemSize: 10, FoundSSLevel: 0,
+	}); err != nil {
+		t.Error(err)
+		t.FailNow()
 	}
 
-	pkt, _ := core.GetTypeInfo[int32]()
-	sstable := sstable.New[int32](
-		&sstable.CfgSSTable{
-			DBPath:               dbPath,
-			CompressionBlockSize: 64 * 1024,
-			BloomFilter: bloom.CfgBloomFilter{
-				FalsePositiveRate: 0.1,
-			},
-		}, "nemtom", *pkt, 0,
-	)
+	// sst1.(&core.ItemWrite[int32]{
+	// 	PartKey: 12345,
+	// 	Value:   []byte{0, 1, 2, 3, 4},
+	// })
 
-	// @TODO: how to system test bloom filters? maybe not?
-	println(sstable.GenerationId)
+	// ss.WriteToDisc(memtOld)
+
+	// err = table1.FlushMemToDisc()
+	// if err = table.FlushMemToDisc(); err != nil {
+	// 	t.Error(err)
+	// 	t.FailNow()
+	// }
+
 }

@@ -15,4 +15,10 @@ go.work.sum
 # ide
 .VSCodeCounter
 
-# custom
+# Dobo DB related
+tmp/
+.bf
+.dat
+.idx
+.sum
+.stats
