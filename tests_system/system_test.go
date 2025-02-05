@@ -1,6 +1,7 @@
 package tests_system
 
 import (
+	"path/filepath"
 	"testing"
 
 	"bytes"
@@ -69,9 +70,10 @@ func TestFlushMemTable(t *testing.T) {
 	// Arrange: Memtable should be flushed after 10 items
 	const N_ITEMS int32 = 10
 	unitSize := memtable.RB_NODE_PTRS_SIZE + 4 + 8
-	cfg := SetupTable(t, true,
+	cfg := SetupTable(t,
 		unitSize*uint32(N_ITEMS), // mem size
 		64*1024,                  // compression block size
+		true,
 	)
 
 	table, err := lsm.New[int32](cfg)
@@ -117,8 +119,8 @@ func TestWriteReadItemSSTable(t *testing.T) {
 	// Arrange: Memtable shou ld be flushed after 10 items
 	const VAL_SIZE uint = 10
 	const BLOCK_SIZE = 64 * 1024
-	n_items := 10 * (BLOCK_SIZE / VAL_SIZE)
-	cfg := SetupTable(t, true, 0, BLOCK_SIZE)
+	const n_items = 10 * (BLOCK_SIZE / VAL_SIZE)
+	cfg := SetupTable(t, 0, BLOCK_SIZE, true)
 	pkt, _ := core.GetTypeInfo[int32]()
 
 	sstable := sstable.New[int32](
@@ -169,7 +171,7 @@ func TestWriteReadItemSSTable(t *testing.T) {
 // Then checks if the same table's configs can be reloaded from a fresh start
 func TestWriteReadConfig(t *testing.T) {
 	// Arrange - random cfg values
-	cfg := SetupTable(t, true, 1234, 64*1024)
+	cfg := SetupTable(t, 1234, 2*64*1024, true)
 	pkt, _ := core.GetTypeInfo[int32]()
 
 	sst1 := sstable.New[int32](&cfg.SSTable, cfg.Name, *pkt, 0)
@@ -182,17 +184,30 @@ func TestWriteReadConfig(t *testing.T) {
 		t.FailNow()
 	}
 
-	// sst1.(&core.ItemWrite[int32]{
-	// 	PartKey: 12345,
-	// 	Value:   []byte{0, 1, 2, 3, 4},
-	// })
+	// Arrange - write config to disc
+	cfg.KeyType = "int32"
+	err := cfg.WriteToDisc()
+	if err != nil {
+		t.Fatal(err)
+	}
 
-	// ss.WriteToDisc(memtOld)
+	tablePath := filepath.Join(cfg.SSTable.DBPath, cfg.Name)
+	treeI, err := lsm.NewFromDisc(tablePath)
+	if err != nil {
+		t.Fatal(err)
+	}
 
-	// err = table1.FlushMemToDisc()
-	// if err = table.FlushMemToDisc(); err != nil {
-	// 	t.Error(err)
-	// 	t.FailNow()
-	// }
+	tree := treeI.(*lsm.LSMTreeTable[int32])
+	if tree.TableName() != cfg.Name {
+		t.Error("Invalid tablename")
+		t.FailNow()
+	}
 
+	if tree.SSTables[0].GetGenerationId() != 0 {
+		t.Error("Invalid GenerationId")
+		t.FailNow()
+	}
+
+	// Assert - file content
+	// @TODO....
 }

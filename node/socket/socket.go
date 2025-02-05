@@ -7,12 +7,14 @@ import (
 	"fmt"
 	"log"
 	"net"
-	"reflect"
 )
 
 type CfgTcp struct {
-	Host string
-	Port int16
+	Host    string `toml:"host"`
+	Port    int16  `toml:"port"`
+	PubKey  string `toml:"public_key"`
+	PrivKey string `toml:"private_key"`
+	Cert    string `toml:"cert"`
 }
 
 func (cfg *CfgTcp) Defaults() {
@@ -24,43 +26,48 @@ func (cfg *CfgTcp) Defaults() {
 	}
 }
 
+type clientHandler func(net.Conn)
+
 type TcpSocket struct {
-	cfg    CfgTcp
-	tlsCfg *tls.Config
+	cfg          CfgTcp
+	tlsCfg       *tls.Config
+	handleClient clientHandler
 }
 
-func NewSocket(cfg *CfgTcp) *TcpSocket {
-	cert, err := tls.LoadX509KeyPair("certs/server.pem", "certs/server.key")
+func New(cfg *CfgTcp, hc clientHandler) (*TcpSocket, error) {
+	cert, err := tls.LoadX509KeyPair(cfg.Cert, cfg.PrivKey)
 	if err != nil {
-		log.Fatalf("server: loadkeys: %s", err)
+		log.Fatalf("[Server] loadkey error: %s", err)
+		return nil, err
 	}
 
 	sock := &TcpSocket{
-		cfg:    *cfg,
-		tlsCfg: &tls.Config{Certificates: []tls.Certificate{cert}},
+		cfg:          *cfg,
+		tlsCfg:       &tls.Config{Certificates: []tls.Certificate{cert}},
+		handleClient: hc,
 	}
 	sock.tlsCfg.Rand = rand.Reader
 
-	return sock
+	return sock, nil
 }
 
 func (t *TcpSocket) Listen() {
 	service := fmt.Sprintf("%s:%d", t.cfg.Host, t.cfg.Port)
 	listener, err := tls.Listen("tcp", service, t.tlsCfg)
 	if err != nil {
-		log.Fatalf("[Server] Listen error: %s", err)
+		log.Fatalf("[Server] listen error: %s", err)
 	}
-	log.Print("[Server] listening at", service)
+	log.Print("[Server] listening at ", service)
 
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
-			log.Printf("[Server] Connection error: %s", err)
+			log.Printf("[Server] connection error: %s", err)
 			break
 		}
 
 		defer conn.Close()
-		log.Printf("[Server] New Connection %s", conn.RemoteAddr())
+		log.Printf("[Server] new connection %s", conn.RemoteAddr())
 		tlscon, ok := conn.(*tls.Conn)
 		if ok {
 			log.Print("ok=true")
@@ -70,47 +77,6 @@ func (t *TcpSocket) Listen() {
 			}
 		}
 
-		go handleClient(conn)
-	}
-}
-
-func handleClient(conn net.Conn) {
-	defer conn.Close()
-
-	// @TODO: Auth or drop
-	for {
-		b := make([]byte, 1)
-		_, err := conn.Read(b)
-		if err != nil {
-			log.Printf("[Server] cmd typ error: %s", err)
-			continue
-		}
-
-		newCmd, ok := cmds[b[0]]
-		if !ok {
-			log.Printf("[Server] cmd not found: %b", b[0])
-			continue
-		}
-		cmd := newCmd(conn)
-
-		err = cmd.Run()
-		if err != nil {
-			log.Fatalf("[%s] unhandled error: %s", getType(cmd), err)
-			break
-			// or continue?
-		}
-	}
-
-	// buf := make([]byte, 512)
-	// 	n, err = conn.Write(buf[:n])
-
-	log.Println("server: conn: closed")
-}
-
-func getType(myvar interface{}) string {
-	if t := reflect.TypeOf(myvar); t.Kind() == reflect.Ptr {
-		return "*" + t.Elem().Name()
-	} else {
-		return t.Name()
+		go t.handleClient(conn)
 	}
 }

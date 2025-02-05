@@ -6,6 +6,8 @@ import (
 	"encoding/binary"
 	"fmt"
 	"iter"
+	"os"
+	"path/filepath"
 
 	"github.com/oboforty/dobo/lsm/bloom"
 	"github.com/oboforty/dobo/lsm/core"
@@ -18,6 +20,8 @@ type IterableTable[P cmp.Ordered] interface {
 }
 
 func (ss *SSTable[P]) WriteToDisc(table IterableTable[P]) error {
+	core.EnsurePath(filepath.Dir(ss.FileBase()))
+
 	// SSTable.New has created a bloomtree, but create it again, now with an estimate for items!
 	ss.bloom = bloom.New(bloom.CfgBloomFilter{
 		MaxItems:          table.Size(),
@@ -25,19 +29,26 @@ func (ss *SSTable[P]) WriteToDisc(table IterableTable[P]) error {
 	})
 
 	// @TODO: option for .dat file to be uncompressed?
-	dat_file, err := ioutils.NewBlockWriter(ss.tablePath+".dat", ss.compressionBlockSize, true)
+	dat_file, err := ioutils.NewBlockWriter(ss.FileBase()+".dat", ss.compressionBlockSize, true)
 	if err != nil {
 		return fmt.Errorf("failed to open file: %w", err)
 	}
 	defer dat_file.Close()
 
-	idxBlockSize := ss.compressionBlockSize
-	idx_file, err := ioutils.NewBlockWriter(ss.tablePath+".idx", idxBlockSize, false)
+	idx_file, err := ioutils.NewBlockWriter(ss.FileBase()+".idx", ss.compressionBlockSize, false)
 	if err != nil {
 		return fmt.Errorf("failed to open file: %w", err)
 	}
-
 	defer idx_file.Close()
+
+	sum_file, err := os.OpenFile(ss.FileBase()+".sum", os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
+	if err != nil {
+		return fmt.Errorf("failed to open file: %w", err)
+	}
+	defer sum_file.Close()
+
+	// @TODO: add Stats in sum file
+	sum_file.WriteString("------")
 
 	// idx block offsets for summary file
 	var idxBlockOffsetPrevious uint32 = 0
@@ -75,22 +86,27 @@ func (ss *SSTable[P]) WriteToDisc(table IterableTable[P]) error {
 		_, err := idx_file.Write(buf.Bytes())
 		if err != nil {
 			// @TODO: handle remove SSTables & restore from WAL
-			panic(err)
+			return err
 		}
 
-		// Write Summary file
+		// Write Summary file for each index block (only)
 		if idxBlockOffsetPrevious != idxBlockOffset {
 			currentSummary.MaxKey = currentKey
 			currentSummary.MaxBlockOffset = idxBlockOffset
 
-			// Write Summary file for each index block (only)
-			// println("@@", currentSummary.MinKey, currentSummary.MaxKey, currentSummary.BlockOffset, "   ", idxBlockOffset, idxInterBlockOffset)
-
 			// @TOOD: WRITE TO DISC
+			buf = new(bytes.Buffer)
+			binary.Write(buf, binary.BigEndian, currentSummary.MinKey)
+			binary.Write(buf, binary.BigEndian, currentSummary.MaxKey)
+			binary.Write(buf, binary.BigEndian, currentSummary.MinBlockOffset)
+			binary.Write(buf, binary.BigEndian, currentSummary.MaxBlockOffset)
+			_, err = sum_file.Write(buf.Bytes())
+			if err != nil {
+				return err
+			}
 
 			ss.summaries = append(ss.summaries, *currentSummary)
 			currentSummary = nil
-
 			idxBlockOffsetPrevious = idxBlockOffset
 		}
 
@@ -110,19 +126,19 @@ func (ss *SSTable[P]) WriteToDisc(table IterableTable[P]) error {
 		totalItems += 1
 	}
 
-	// @TODO: NEM JO A LAST OFFSET
-	// 				write last summary entry
-	currentSummary.MaxKey = currentKey
-	currentSummary.MaxBlockOffset = idxBlockOffsetPrevious
-
-	if currentSummary.MaxBlockOffset == 0 {
-		println("!!! ERROR: APPEND file length as last summary item's size!")
-		currentSummary.MaxBlockOffset = 99999
+	if currentSummary.MaxBlockOffset != 0 {
+		println("@@@@ THIS SHOULD BE 0: ", currentSummary.MaxBlockOffset)
 	}
+
+	// Write last summary entry -- calc upper bound of last
+	// @TODO: figure out why these two equal to file's size xD
+	idxBlockOffset, idxInterBlockOffset := idx_file.GetOffsets()
+	currentSummary.MaxBlockOffset = idxBlockOffset + idxInterBlockOffset
+	currentSummary.MaxKey = currentKey
 	ss.summaries = append(ss.summaries, *currentSummary)
 
 	// Write Bloom to disc
-	ss.bloom.WriteToDisc(ss.tablePath + ".bf")
+	ss.bloom.WriteToDisc(ss.FileBase() + ".bf")
 
 	// todo: collect stats & write? @later
 

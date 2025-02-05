@@ -12,7 +12,7 @@
       "program": "./main.go",
       "env": {},
       "args": [
-        "/home/rajmund_csombordi/tmp/mydb/node.toml"
+        "/home/rajmund_csombordi/obodb"
       ],
       "showLog": true,
       "trace": "verbose"

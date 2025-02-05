@@ -87,16 +87,10 @@ func CapturePrint(t *testing.T) {
 	})
 }
 
-func SetupTable(t *testing.T, ensureTable bool, memsize uint32, blocksize uint32) *lsm.CfgTable {
+func SetupTable(t *testing.T, memsize uint32, blocksize uint32, cleanup bool) *lsm.CfgTable {
 	// Create a relative folder
 	cwd, _ := os.Getwd()
 	dbPath := filepath.Join(cwd, "..", "tmp")
-
-	if ensureTable {
-		if err := EnsurePath(dbPath); err != nil {
-			panic(err)
-		}
-	}
 
 	// Capture print
 	old := os.Stdout
@@ -114,7 +108,7 @@ func SetupTable(t *testing.T, ensureTable bool, memsize uint32, blocksize uint32
 		println(buf.String())
 
 		// clean up files
-		if ensureTable {
+		if cleanup {
 			err := os.RemoveAll(dbPath)
 			if err != nil {
 				t.Fatal(err)
@@ -171,16 +165,4 @@ func RandAsciiByte(n int) []byte {
 	}
 
 	return b
-}
-
-func EnsurePath(tablePath string) error {
-	if _, err := os.Stat(tablePath); err != nil {
-		err = os.MkdirAll(tablePath, os.ModePerm)
-
-		if err != nil {
-			return os.ErrNotExist
-		}
-	}
-
-	return nil
 }

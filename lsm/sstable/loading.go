@@ -13,14 +13,14 @@ import (
 )
 
 func (ss *SSTable[P]) LoadFromDisc() error {
-	file, err := os.Open(ss.tablePath + ".dat")
+	file, err := os.Open(ss.FileBase() + ".sum")
 	if err != nil {
 		return fmt.Errorf("failed to open file: %w", err)
 	}
 	defer file.Close()
 
 	// load bloom filter
-	ss.bloom.LoadFromDisc(ss.tablePath + ".bf")
+	ss.bloom.LoadFromDisc(ss.FileBase() + ".bf")
 
 	// 1st part - (ascii) metadata
 	scanner := bufio.NewScanner(file)

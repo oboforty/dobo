@@ -5,7 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/oboforty/dobo/lsm"
+	"github.com/oboforty/dobo/node"
 )
 
 func main() {
@@ -15,15 +15,16 @@ func main() {
 	if len(os.Args) <= 1 {
 		cfgFilePath, err = os.Getwd()
 		if err != nil {
-			log.Fatal("[Cfg] Unable to get CWD")
+			log.Fatal("[Cfg] unable to get CWD")
 		}
 	} else {
 		cfgFilePath = os.Args[1]
 	}
 
-	finfo, _ := os.Stat(cfgFilePath)
-	// if err != nil {
-	// log.Fatal("[Cfg] Unable to get CWD")
+	finfo, err := os.Stat(cfgFilePath)
+	if err != nil {
+		log.Fatalf("[Cfg] stat error %s", err)
+	}
 
 	if !finfo.IsDir() {
 		cfgFilePath = filepath.Dir(cfgFilePath)
@@ -37,22 +38,11 @@ func main() {
 	// @TODO: get dbpath from node config?
 	dbPath := cfgFilePath
 
-	tables, err := os.ReadDir(dbPath)
+	node, err := node.NewFromDisc(dbPath)
+
 	if err != nil {
-		log.Fatalf("[Cfg] Parse error: %s", err)
+		log.Fatalf("[Node] setup error: %s", err)
 	}
 
-	for _, file := range tables {
-		if !file.IsDir() {
-			continue
-		}
-
-		tree, err := lsm.NewFromDisc(filepath.Join(dbPath, file.Name()))
-		if err != nil {
-			log.Fatalf("[LSM] Load error: %s", err)
-		}
-
-		// @TODO: print core stats on size & summary
-		log.Printf("[LSM] Loaded table %s", tree.TableName())
-	}
+	node.Listen()
 }

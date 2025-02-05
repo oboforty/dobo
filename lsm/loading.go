@@ -8,11 +8,12 @@ import (
 	"regexp"
 	"strconv"
 
+	"github.com/pelletier/go-toml/v2"
+
 	"github.com/oboforty/dobo/lsm/bloom"
 	"github.com/oboforty/dobo/lsm/core"
 	"github.com/oboforty/dobo/lsm/memtable"
 	"github.com/oboforty/dobo/lsm/sstable"
-	"github.com/pelletier/go-toml/v2"
 )
 
 type CfgTable struct {
@@ -58,13 +59,54 @@ func (cfg *CfgTable) ApplyDefaults() {
 
 }
 
+func (cfg *CfgTable) WriteToDisc() error {
+	tablePath := filepath.Join(cfg.SSTable.DBPath, cfg.Name, "table.toml")
+
+	err := core.EnsurePath(filepath.Dir(tablePath))
+	if err != nil {
+		log.Fatalf("[Cfg] couldn't create directories: %s (%s)", err, tablePath)
+		return err
+	}
+
+	data, err := toml.Marshal(cfg)
+
+	if err != nil {
+		log.Fatalf("[Cfg] toml serialize error: %s (%s)", err, tablePath)
+		return err
+	}
+
+	err = os.WriteFile(tablePath, data, 0644)
+
+	if err != nil {
+		log.Fatalf("[Cfg] write error: %s (%s)", err, tablePath)
+		return err
+	}
+
+	return nil
+}
+
+func ReadTableConfig(dbPath string) (*CfgTable, error) {
+	tablePath := filepath.Join(dbPath, "table.toml")
+	cfgContent, err := os.ReadFile(tablePath)
+
+	if err != nil {
+		log.Fatalf("[Cfg] not found file: %s (%s)", err, tablePath)
+		return nil, err
+	}
+
+	cfgiTable := &CfgTable{}
+
+	err = toml.Unmarshal(cfgContent, cfgiTable)
+	if err != nil {
+		log.Fatalf("[Cfg] parse error: %s (%s)", err, tablePath)
+		return nil, err
+	}
+
+	return cfgiTable, nil
+}
+
 func (t *LSMTreeTable[P]) loadSSTables() error {
 	dbPath := filepath.Join(t.cfg.SSTable.DBPath, t.TableName())
-
-	// ensure directories (? is this needed?)
-	// if err := utils.EnsurePath(dbPath); err != nil {
-	// 	return err
-	// }
 
 	// load relevant tables
 	files, err := os.ReadDir(dbPath)
@@ -76,7 +118,6 @@ func (t *LSMTreeTable[P]) loadSSTables() error {
 	for _, file := range files {
 		match := r.FindStringSubmatch(file.Name())
 		if match == nil {
-			log.Println("[SST] Skipping non-table ", file.Name())
 			continue
 		}
 
@@ -87,6 +128,7 @@ func (t *LSMTreeTable[P]) loadSSTables() error {
 			t.partKeyTypeInfo,
 			genId,
 		)
+		log.Printf("[SST] loading table %s from %s", t.cfg.Name, sst.FileBase())
 		sst.LoadFromDisc()
 
 		t.SSTables = append(t.SSTables, sst)
@@ -101,34 +143,7 @@ type LSMTreeTableInterface interface {
 	// @TODO: add more useful funcs to this interface
 }
 
-func ReadTableConfig(dbPath string) (*CfgTable, error) {
-
-	cfgContent, err := os.ReadFile(filepath.Join(dbPath, "table.toml"))
-	if err != nil {
-		log.Fatalf("[Cfg] Unable to find config file at %s", dbPath)
-		return nil, err
-	}
-
-	cfgiTable := &CfgTable{}
-
-	err = toml.Unmarshal(cfgContent, cfgiTable)
-	if err != nil {
-		log.Fatalf("[Cfg] parse error: %s", err)
-		return nil, err
-	}
-
-	return cfgiTable, nil
-}
-
 func NewFromDisc(dbPath string) (LSMTreeTableInterface, error) {
-	// tablePath := filepath.Join(cfg.DBPath, tableName, strconv.Itoa(id))
-	// utils.EnsurePath(filepath.Dir(tablePath))
-
-	// utf8.Valid(
-	// scanner := bufio.NewScanner(file)
-	// scanner.Scan()
-	// scanner.Text()
-
 	cfg, err := ReadTableConfig(dbPath)
 	if err != nil {
 		return nil, err

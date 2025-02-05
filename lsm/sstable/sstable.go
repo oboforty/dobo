@@ -3,6 +3,7 @@ package sstable
 import (
 	"cmp"
 	"path/filepath"
+	"strconv"
 
 	"github.com/oboforty/dobo/lsm/bloom"
 	"github.com/oboforty/dobo/lsm/core"
@@ -64,6 +65,10 @@ func (ss *SSTable[P]) GetGenerationId() int {
 	return ss.GenerationId
 }
 
+func (ss *SSTable[P]) FileBase() string {
+	return filepath.Join(ss.tablePath, "g"+strconv.Itoa(ss.GenerationId))
+}
+
 func (ss *SSTable[P]) Get(partKey P) *core.ItemQuery[P] {
 	ok, err := ss.bloom.Test(partKey)
 
@@ -89,7 +94,7 @@ func (ss *SSTable[P]) Get(partKey P) *core.ItemQuery[P] {
 	}
 
 	khit, err := SearchOffsetInIndexFile(
-		ss.tablePath+".idx",
+		ss.FileBase()+".idx",
 		idxRange.MinBlockOffset,
 		idxRange.MaxBlockOffset,
 		partKey,
@@ -103,7 +108,7 @@ func (ss *SSTable[P]) Get(partKey P) *core.ItemQuery[P] {
 	}
 
 	vhit, err := SearchDataFileGzipBlock(
-		ss.tablePath+".dat",
+		ss.FileBase()+".dat",
 		int32(khit.BlockOffset),
 		int32(khit.InterBlockOffset),
 		partKey,

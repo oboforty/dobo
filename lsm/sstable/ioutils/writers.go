@@ -53,7 +53,6 @@ func NewBlockWriter(filename string, blockSize uint32, compressMethod bool) (Blo
 
 func (bw *blockWriter) Write(data []byte) (int, error) {
 
-	// @TODO: write length
 	nb, err := bw.bufWriter.Write(data)
 
 	if err == nil {
@@ -158,12 +157,15 @@ func compressBlock(data []byte) ([]byte, error) {
 	var buf bytes.Buffer
 	writer := gzip.NewWriter(&buf)
 	_, err := writer.Write(data)
+
 	if err != nil {
 		return nil, err
 	}
+
 	err = writer.Close()
 	if err != nil {
 		return nil, err
 	}
+
 	return buf.Bytes(), nil
 }
