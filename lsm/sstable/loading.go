@@ -9,7 +9,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/oboforty/dobo/lsm/sstable/ioutils"
+	"github.com/oboforty/dobo/lsm/core/ioutils"
 )
 
 func (ss *SSTable[P]) LoadFromDisc() error {

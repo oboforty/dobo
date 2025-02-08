@@ -9,6 +9,7 @@
 go.work
 go.work.sum
 .env
+__debug_bin*
 
 # python
 

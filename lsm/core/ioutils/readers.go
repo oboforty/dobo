@@ -29,11 +29,6 @@ func ReadDynamic[LT keyLengthTypes](reader io.Reader) ([]byte, error) {
 		return nil, err
 	}
 
-	// targBytes, err := io.ReadAll(io.LimitReader(reader, int64(dataLength)))
-	// if err != nil {
-	// 	return nil, err
-	// }
-
 	return dataBytes, nil
 }
 

@@ -2,19 +2,24 @@ package node
 
 import (
 	"log"
-	"net"
 	"os"
 	"path/filepath"
-	"reflect"
 
 	"github.com/oboforty/dobo/lsm"
 	"github.com/oboforty/dobo/node/socket"
+	"github.com/pelletier/go-toml/v2"
 )
+
+type CfgNode struct {
+	DbPath string        `toml:"dbpath"`
+	Tcp    socket.CfgTcp `toml:"socket"`
+}
 
 type Node struct {
 	DbPath string
-	Tables map[string]lsm.LSMTreeTableInterface
 	sock   *socket.TcpSocket
+
+	Tables map[string]lsm.LSMTreeTableInterface
 }
 
 func NewFromDisc(path string) (*Node, error) {
@@ -34,7 +39,7 @@ func NewFromDisc(path string) (*Node, error) {
 		DbPath: cfg.DbPath,
 	}
 
-	node.sock, err = socket.New(&cfg.Tcp, node.handleClient)
+	node.sock, err = socket.New(&cfg.Tcp, node.handleCommands)
 	if err != nil {
 		log.Fatalf("[Node] socket setup error: %s", err)
 		return nil, err
@@ -67,48 +72,35 @@ func NewFromDisc(path string) (*Node, error) {
 	return node, nil
 }
 
-func (n *Node) handleClient(conn net.Conn) {
-	defer conn.Close()
+func (n *Node) Table(tableName string) lsm.LSMTreeTableInterface {
+	v, ok := n.Tables[tableName]
 
-	// @TODO: Auth or drop
-
-	for {
-		b := make([]byte, 1)
-		_, err := conn.Read(b)
-		if err != nil {
-			log.Printf("[Server] cmd typ error: %s", err)
-			continue
-		}
-
-		newCmd, ok := cmds[b[0]]
-		if !ok {
-			log.Printf("[Server] cmd not found: %b", b[0])
-			continue
-		}
-		cmd := newCmd(conn)
-
-		err = cmd.Run()
-		if err != nil {
-			log.Fatalf("[%s] unhandled error: %s", getType(cmd), err)
-			break
-			// or continue?
-		}
+	if !ok {
+		return nil
 	}
-
-	// buf := make([]byte, 512)
-	// 	n, err = conn.Write(buf[:n])
-
-	log.Printf("[Server]: connection closed %s", conn.RemoteAddr())
+	return v
 }
 
 func (n *Node) Listen() {
 	n.sock.Listen()
 }
 
-func getType(myvar interface{}) string {
-	if t := reflect.TypeOf(myvar); t.Kind() == reflect.Ptr {
-		return "*" + t.Elem().Name()
-	} else {
-		return t.Name()
+func ReadNodeConfig(path string) (*CfgNode, error) {
+	nodePath := filepath.Join(path, "node.toml")
+	cfgContent, err := os.ReadFile(nodePath)
+
+	if err != nil {
+		log.Fatalf("[Cfg] not found file: %s (%s)", err, nodePath)
+		return nil, err
 	}
+
+	cfg := &CfgNode{}
+
+	err = toml.Unmarshal(cfgContent, cfg)
+	if err != nil {
+		log.Fatalf("[Cfg] parse error: %s (%s)", err, nodePath)
+		return nil, err
+	}
+
+	return cfg, nil
 }

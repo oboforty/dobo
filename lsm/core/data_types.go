@@ -3,6 +3,7 @@ package core
 import (
 	"cmp"
 	"errors"
+	"reflect"
 	"unsafe"
 )
 
@@ -80,6 +81,14 @@ func GetTypeInfo[T any]() (*TypeInfo, error) {
 	}
 
 	return typeInfo, nil
+}
+
+func GetType(myvar interface{}) string {
+	if t := reflect.TypeOf(myvar); t.Kind() == reflect.Ptr {
+		return "*" + t.Elem().Name()
+	} else {
+		return t.Name()
+	}
 }
 
 func GetSize(v interface{}) uint32 {
