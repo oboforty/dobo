@@ -15,8 +15,8 @@ const (
 )
 
 type CfgMemtable struct {
-	Type        CfgMemtableType `toml:"type"`
-	MaxByteSize uint32          `toml:"max_size"`
+	Type        CfgMemtableType `toml:"type" json:"type"`
+	MaxByteSize uint32          `toml:"max_size" json:"max_size"`
 }
 
 type MemT[P cmp.Ordered] struct {

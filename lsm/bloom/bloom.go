@@ -14,8 +14,8 @@ type CfgBloomFilter struct {
 	Bits          uint32
 	HashFunctions uint32
 
-	MaxItems          uint32
-	FalsePositiveRate float64
+	MaxItems          uint32  `toml:"max_items" json:"max_items"`
+	FalsePositiveRate float64 `toml:"false_positive_rate" json:"false_positive_rate"`
 }
 
 // type BloomFilterComparator func(bloom *bloom.BloomFilter, val interface{}) bool

@@ -64,10 +64,9 @@ func (rb *RBMemT[P]) Upsert(item *core.ItemWrite[P]) {
 	rb.byteSize += uint32(len(item.Value)) + RB_NODE_PTRS_SIZE
 }
 
-// @TODO: Tombstone entry!
-// func (rb *RBMemT) Delete(partKey interface{}) {
-// 	rb.tree.Remove(partKey)
-// }
+func (rb *RBMemT[P]) Delete(partKey P) {
+	// @TODO
+}
 
 func (rb *RBMemT[P]) ItemIterator() iter.Seq[*core.ItemQuery[P]] {
 	return func(yield func(*core.ItemQuery[P]) bool) {

@@ -30,15 +30,7 @@ func main() {
 		cfgFilePath = filepath.Dir(cfgFilePath)
 	}
 
-	// if filepath.dir
-	// _, err = config.ReadNodeConfig(cfgFilePath)
-	// if err != nil {
-	// 	log.Fatalf("[Cfg] Parse error: %s", err)
-	// }
-	// @TODO: get dbpath from node config?
-	dbPath := cfgFilePath
-
-	node, err := node.NewFromDisc(dbPath)
+	node, err := node.NewFromDisc(cfgFilePath)
 
 	if err != nil {
 		log.Fatalf("[Node] setup error: %s", err)

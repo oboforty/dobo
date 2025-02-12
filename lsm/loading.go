@@ -17,10 +17,10 @@ import (
 )
 
 type CfgTable struct {
-	Name     string               `toml:"name"`
-	KeyType  core.DataType        `toml:"key_type"`
-	MemTable memtable.CfgMemtable `toml:"memtable"`
-	SSTable  sstable.CfgSSTable   `toml:"sstable"`
+	Name     string               `toml:"name" json:"name"`
+	KeyType  core.DataType        `toml:"key_type" json:"key_type"`
+	MemTable memtable.CfgMemtable `toml:"memtable" json:"memtable"`
+	SSTable  sstable.CfgSSTable   `toml:"sstable" json:"sstable"`
 }
 
 var tableDefaults = CfgTable{
@@ -40,6 +40,10 @@ var tableDefaults = CfgTable{
 func (cfg *CfgTable) ApplyDefaults() {
 	// @TODO: add a defaults.toml at top lvl?
 	//				ApplyDefaults(defaults *CfgTable, ...) {
+
+	if cfg.KeyType == "" {
+		cfg.KeyType = "int64"
+	}
 
 	if cfg.MemTable.Type == "" {
 		cfg.MemTable.Type = tableDefaults.MemTable.Type

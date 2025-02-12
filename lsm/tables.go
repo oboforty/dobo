@@ -30,7 +30,7 @@ type MemTable[P cmp.Ordered] interface {
 
 	Get(P) *core.ItemQuery[P]
 	Upsert(*core.ItemWrite[P])
-	// Delete(interface{})
+	Delete(P)
 
 	ByteSize() uint32
 	IsFull() bool
@@ -58,13 +58,6 @@ func New[P cmp.Ordered](cfg *CfgTable) (*LSMTreeTable[P], error) {
 
 	return t, nil
 }
-
-// GET, QUERY - bulk query, can filter,
-// PUT/UPSERT, UPDATE - partial update, can be bulk
-// REMOVE - soft delete, DELETE - hard delete,
-// CREATE - fails if exists
-
-// CQRS: (GET, QUERY), (CREATE, UPSERT, UPDATE, REMOVE, DELETE), (BALANCE-INDEX, SETCONFIG, CREATE-TABLE, DELETE-TABLE, REPLICATE-TABLE, CREATE-PARTITION, DELETE-PARTITION, REPARTITION-TABLE)
 
 func (t *LSMTreeTable[P]) Get(partKey P) *core.ItemQuery[P] {
 	var item *core.ItemQuery[P]
@@ -95,9 +88,9 @@ func (t *LSMTreeTable[P]) Upsert(item *core.ItemWrite[P]) bool {
 }
 
 // @TODO: Tombstone
-// func (d *LSMTreeTable) Delete(partKey P) {
-// 	d.Memtable.Delete(partKey)
-// }
+func (t *LSMTreeTable[P]) Delete(partKey P) {
+	t.MemTable.Delete(partKey)
+}
 
 func (t *LSMTreeTable[P]) CurrentGenerationId() int {
 	l := len(t.SSTables)
@@ -144,9 +137,4 @@ func (t *LSMTreeTable[P]) FlushMemToDisc() error {
 
 func (t *LSMTreeTable[P]) TableName() string {
 	return t.cfg.Name
-}
-
-func (t *LSMTreeTable[P]) ConvertKey(bytes []byte) P {
-
-	return
 }

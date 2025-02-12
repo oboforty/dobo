@@ -8,7 +8,7 @@ import (
 	"io"
 	"os"
 
-	"github.com/oboforty/dobo/lsm/sstable/ioutils"
+	"github.com/oboforty/dobo/lsm/core/ioutils"
 )
 
 type IdxSearchHit struct {

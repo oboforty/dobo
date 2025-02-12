@@ -1,88 +1,106 @@
 package commands
 
 import (
+	"cmp"
+	"fmt"
+	"io"
 	"net"
 
 	"github.com/oboforty/dobo/lsm"
+	"github.com/oboforty/dobo/lsm/core"
 	"github.com/oboforty/dobo/lsm/core/ioutils"
 )
 
-type ItemCmd struct {
-	Table   string
-	PartKey []byte
-	Value   []byte
-}
+const (
+	GET_ITEM CommandType = iota + 20
+	PUT_ITEM
+	UPD_ITEM
+	DEL_ITEM
+)
 
-type GetItemCmd struct {
-	ItemCmd
-}
+func GetItem[P cmp.Ordered](table *lsm.LSMTreeTable[P], conn net.Conn, key *P) {
+	item := table.Get(*key)
 
-func (p GetItemCmd) Run(node Node, conn net.Conn) error {
+	err := WriteItemIO(conn, item, 0)
 
-	return nil
-}
-
-type PutItemCmd struct {
-	ItemCmd
-}
-
-func (p PutItemCmd) Run(node Node, conn net.Conn) error {
-	tun := node.Table(p.Table)
-
-	var err error
-	var key interface{}
-
-	switch table := tun.(type) {
-	case *lsm.LSMTreeTable[int32]:
-		var key int32
-		ioutils.ReadDynamicValue[uint32](file, &key)
-
-		// table, err := GetTable[int32](node, p.Table)
-		// key := table.ConvertKey(p.PartKey)
-		item := table.Get(key.(int32))
-
+	if err != nil {
+		fmt.Printf("[%s] write error: %s (Get Item)", table.TableName(), err)
 	}
+}
 
-	err
-
-	var cmd string = "get"
-
-	switch cmd {
-	case "get":
-	case "put":
-	case "delete":
-	case "get-bulk":
-	case "put-bulk":
-	case "delete-bulk":
-	}
+func PutItem[P cmp.Ordered](table *lsm.LSMTreeTable[P], conn net.Conn, key *P) error {
+	value, err := ioutils.ReadDynamic[uint32](conn)
 
 	if err != nil {
 		return err
 	}
 
-	// table := node.Table(p.Table)
+	item := core.ItemWrite[P]{
+		PartKey: *key,
+		Value:   value,
+	}
 
-	// @TODI: $ITT: refactor -- rely on [P]
-
-	// table.Upsert(node)
-
-	return nil
-}
-
-type UpdateItemCmd struct {
-	ItemCmd
-}
-
-func (p UpdateItemCmd) Run(node Node, conn net.Conn) error {
+	table.Upsert(&item)
 
 	return nil
 }
 
-type DelItemCmd struct {
-	ItemCmd
+// func UpdateItem[P cmp.Ordered](table *lsm.LSMTreeTable[P], conn net.Conn, key *P, value []byte) {
+// 	var val []byte
+// 	ioutils.GetVal(&val)
+// 	item := table.Update(key)
+// 	fmt.Println("UPDATE:", item)
+// }
+
+func DeleteItem[P cmp.Ordered](table *lsm.LSMTreeTable[P], conn net.Conn, key *P) {
+	table.Delete(*key)
+	fmt.Println("DELETE:", *key)
 }
 
-func (p DelItemCmd) Run(node Node, conn net.Conn) error {
+func HandleItemCommand[T cmp.Ordered](table *lsm.LSMTreeTable[T], conn net.Conn, cmd CommandType) error {
+	var key T
+	var err error
+
+	err = ioutils.ReadDynamicValue[uint32](conn, &key)
+
+	if err != nil {
+		return err
+	}
+
+	switch cmd {
+	case GET_ITEM:
+		GetItem(table, conn, &key)
+	case PUT_ITEM:
+		err = PutItem(table, conn, &key)
+	// case UPD_ITEM:
+	// 	value, err = ioutils.ReadDynamic[uint32](conn)
+	// 	UpdateItem(table, conn, &key, value)
+	case DEL_ITEM:
+		DeleteItem(table, conn, &key)
+	default:
+		return fmt.Errorf("invalid item command %d", cmd)
+	}
+
+	return err
+}
+
+func WriteItemIO[P cmp.Ordered](writer io.Writer, item *core.ItemQuery[P], serType uint8) error {
+	var content []byte
+	var err error
+
+	switch serType {
+	case 0: // raw
+		content = item.Value
+	case 1: // json
+	default:
+		return fmt.Errorf("invalid serialization format: %d", serType)
+	}
+
+	err = ioutils.WriteDynamic[uint32](writer, content)
+
+	if err != nil {
+		return err
+	}
 
 	return nil
 }

@@ -38,9 +38,16 @@ func ReadDynamicValue[LT keyLengthTypes, P any](reader io.Reader, result *P) err
 		return err
 	}
 
-	err = binary.Read(bytes.NewReader(valBytes), binary.LittleEndian, result)
-	if err != nil {
-		return err
+	switch v := any(result).(type) {
+	case *string:
+		*v = string(valBytes)
+	case *[]byte:
+		*v = valBytes
+	default:
+		err = binary.Read(bytes.NewReader(valBytes), binary.BigEndian, result)
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil

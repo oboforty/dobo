@@ -1,65 +1,15 @@
 package node
 
 import (
-	"cmp"
 	"fmt"
 	"io"
 	"log"
 	"net"
 
 	"github.com/oboforty/dobo/lsm"
-	"github.com/oboforty/dobo/lsm/core"
 	"github.com/oboforty/dobo/lsm/core/ioutils"
+	"github.com/oboforty/dobo/node/commands"
 )
-
-type CommandType = byte
-
-const (
-	GET_TABLE CommandType = iota + 10
-	PUT_TABLE
-	UPD_TABLE
-	DEL_TABLE
-)
-const (
-	GET_ITEM CommandType = iota + 20
-	PUT_ITEM
-	UPD_ITEM
-	DEL_ITEM
-)
-const (
-	QRY_ITEMS CommandType = iota + 30
-	PUT_ITEMS
-	UPD_ITEMS
-	DEL_ITEMS
-)
-
-func GetItem[P cmp.Ordered](table *lsm.LSMTreeTable[P], conn net.Conn, key *P) {
-	item := table.Get(*key)
-
-	fmt.Println("GET:", item)
-}
-
-func PutItem[P cmp.Ordered](table *lsm.LSMTreeTable[P], conn net.Conn, key *P, value []byte) {
-	item := core.ItemWrite[P]{
-		PartKey: *key,
-		Value:   value,
-	}
-
-	fmt.Println("PUT:", item.PartKey)
-	table.Upsert(&item)
-}
-
-// func UpdateItem[P cmp.Ordered](table *lsm.LSMTreeTable[P], conn net.Conn, key *P, value []byte) {
-// 	var val []byte
-// 	ioutils.GetVal(&val)
-// 	item := table.Update(key)
-// 	fmt.Println("UPDATE:", item)
-// }
-
-// func DeleteItem[P cmp.Ordered](table *lsm.LSMTreeTable[P], conn net.Conn, key *P) {
-// 	item := table.Delete(key)
-// 	fmt.Println("DELETE:", item)
-// }
 
 func (node *Node) handleCommands(conn net.Conn) {
 	defer conn.Close()
@@ -72,60 +22,70 @@ func (node *Node) handleCommands(conn net.Conn) {
 				break
 			}
 
-			log.Printf("[cmdver] cmd typ error: %s", err)
+			log.Printf("[Cmd] command parsing error: %s", err)
 			continue
 		}
 
-		var cmd CommandType = b[0]
+		var cmd commands.CommandType = b[0]
+		cmdDescr, ok := commands.CMD_DESCR[cmd]
 		var tableName string
+		var tableIF lsm.LSMTreeTableInterface
+
+		if !ok {
+			log.Printf("[Cmd] Invalid command: %d", cmd)
+			continue
+		} else {
+			log.Printf("[Cmd] Running command: %s", cmdDescr.Name)
+		}
+
+		// Load LSM Table if it's needed
+		if cmdDescr.NoTableNeeded {
+			err = commands.HandleNodeCommand(node, conn, cmd)
+
+			if err != nil {
+				log.Printf("[Cmd] error: %s (%s)", cmdDescr.Name, err)
+			}
+			continue
+		}
 
 		err = ioutils.ReadDynamicValue[uint8](conn, &tableName)
 		if err != nil {
-		}
-		tableIF, ok := node.Tables[tableName]
-		if !ok {
+			log.Printf("[Cmd] TableName parsing error: %s (%s)", err, cmdDescr.Name)
+			continue
 		}
 
-		// Item commands
-		if 20 <= cmd && cmd <= 39 {
+		tableIF, ok = node.Tables[tableName]
+		if !ok {
+			log.Printf("[%s] Table does not exist: %s (%s)", tableName, err, cmdDescr.Name)
+			continue
+		}
+
+		if commands.GET_ITEM <= cmd && cmd <= commands.DEL_ITEMS {
+			// Item commands
 			switch table := tableIF.(type) {
 			case *lsm.LSMTreeTable[int32]:
-				handleItemCommand(table, conn, cmd)
+				err = commands.HandleItemCommand(table, conn, cmd)
 			case *lsm.LSMTreeTable[int64]:
-				handleItemCommand(table, conn, cmd)
+				err = commands.HandleItemCommand(table, conn, cmd)
 			case *lsm.LSMTreeTable[float32]:
-				handleItemCommand(table, conn, cmd)
+				err = commands.HandleItemCommand(table, conn, cmd)
 			case *lsm.LSMTreeTable[float64]:
-				handleItemCommand(table, conn, cmd)
+				err = commands.HandleItemCommand(table, conn, cmd)
 			case *lsm.LSMTreeTable[string]:
-				handleItemCommand(table, conn, cmd)
+				err = commands.HandleItemCommand(table, conn, cmd)
 			default:
-				fmt.Println("Unsupported table type")
+				err = fmt.Errorf("invalid item command: %d", cmd)
 			}
+		} else if commands.TABLE_INFO <= cmd && cmd <= commands.DROP_TABLE {
+			// Table commands
+			err = commands.HandleTableCommand(tableIF, conn, cmd)
+		} else {
+			err = fmt.Errorf("invalid command: %d", cmd)
+		}
+
+		if err != nil {
+			log.Printf("[%s] error: %s (%s)", tableName, err, cmdDescr.Name)
+			continue
 		}
 	}
-}
-
-func handleItemCommand[T cmp.Ordered](table *lsm.LSMTreeTable[T], conn net.Conn, cmd CommandType) error {
-	var key T
-	ioutils.ReadDynamicValue[uint32](conn, &key)
-	var value []byte
-	var err error
-
-	switch cmd {
-	case GET_ITEM:
-		GetItem(table, conn, &key)
-	case PUT_ITEM:
-		value, err = ioutils.ReadDynamic[uint32](conn)
-		PutItem(table, conn, &key, value)
-	// case UPD_ITEM:
-	// 	value, err = ioutils.ReadDynamic[uint32](conn)
-	// 	UpdateItem(table, conn, &key, value)
-	// case DEL_ITEM:
-	// 	DeleteItem(table, conn, &key)
-	default:
-		fmt.Println("Invalid command")
-	}
-
-	return err
 }

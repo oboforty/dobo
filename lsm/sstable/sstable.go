@@ -30,10 +30,10 @@ type SSTable[P cmp.Ordered] struct {
 }
 
 type CfgSSTable struct {
-	DBPath               string `toml:"path"`
-	CompressionBlockSize uint32 `toml:"block_size"`
+	DBPath               string `toml:"path" json:"path"`
+	CompressionBlockSize uint32 `toml:"block_size" json:"block_size"`
 
-	BloomFilter bloom.CfgBloomFilter
+	BloomFilter bloom.CfgBloomFilter `toml:"bloom" json:"bloom"`
 }
 
 type IndexSummary[P cmp.Ordered] struct {
