@@ -2,10 +2,8 @@ package main
 
 import (
 	"crypto/tls"
-	"crypto/x509"
 	"encoding/binary"
 	"encoding/json"
-	"fmt"
 	"log"
 	"slices"
 )
@@ -23,6 +21,11 @@ const (
 	CMD_PUT_ITEM     uint8 = 21
 	CMD_UPD_ITEM     uint8 = 22
 	CMD_DEL_ITEM     uint8 = 23
+)
+
+const (
+	DO_PUT = true
+	DO_GET = true
 )
 
 func main() {
@@ -43,45 +46,60 @@ func main() {
 	log.Println("client: connected to: ", conn.RemoteAddr())
 
 	state := conn.ConnectionState()
-	for _, v := range state.PeerCertificates {
-		fmt.Println(x509.MarshalPKIXPublicKey(v.PublicKey))
-		fmt.Println(v.Subject)
-	}
+	// for _, v := range state.PeerCertificates {
+	// 	fmt.Println(x509.MarshalPKIXPublicKey(v.PublicKey))
+	// 	fmt.Println(v.Subject)
+	// }
 	log.Println("client handshake: ", state.HandshakeComplete)
 	// log.Println("client: mutual: ", state.NegotiatedProtocolIsMutual)
+
+	var dataLength uint32
+	var cmdResponse byte
+	var data []byte
+	var tableName string = "table1"
+	b := make([]byte, 1)
 
 	err = binary.Write(conn, binary.BigEndian, CMD_LIST_TABLES)
 	if err != nil {
 		log.Fatalf("error: %s", err)
 	}
 
-	var dataLength uint32
+	// read cmd
+	_, err = conn.Read(b)
+	if err != nil {
+		log.Fatalf("cmd response read error: %s", err)
+	}
+	cmdResponse = b[0]
+	if cmdResponse != CMD_LIST_TABLES {
+		log.Fatalf("wrong response code: %d", cmdResponse)
+	}
+
+	// read tables
 	err = binary.Read(conn, binary.BigEndian, &dataLength)
 	if err != nil {
 		log.Fatalf("read len error: %s", err)
 	}
-
-	tablesBytes := make([]byte, dataLength)
-	_, err = conn.Read(tablesBytes)
+	data = make([]byte, dataLength)
+	_, err = conn.Read(data)
 	if err != nil {
 		log.Fatalf("read error: %s", err)
 	}
 
 	var tables []string
-	err = json.Unmarshal(tablesBytes, &tables)
+	err = json.Unmarshal(data, &tables)
 	if err != nil {
 		log.Fatalf("json error: %s", err)
 	}
 
 	println("Tables:")
-	for table := range tables {
+	for _, table := range tables {
 		println(table)
 	}
 	println("---------------")
 
 	// Create table if doesn't exist yet
-	if !slices.Contains(tables, "table1") {
-		log.Printf("Creating table table1")
+	if !slices.Contains(tables, tableName) {
+		log.Printf("Creating table %s", tableName)
 
 		err = binary.Write(conn, binary.BigEndian, CMD_CREATE_TABLE)
 		if err != nil {
@@ -103,27 +121,41 @@ func main() {
 		}
 
 		// get reply
+		// read cmd
+		_, err = conn.Read(b)
+		if err != nil {
+			log.Fatalf("cmd response read error: %s", err)
+		}
+		cmdResponse = b[0]
+		if cmdResponse != CMD_CREATE_TABLE {
+			log.Fatalf("wrong response code: %d", cmdResponse)
+		}
+
+		// read final result config
 		err = binary.Read(conn, binary.BigEndian, &dataLength)
 		if err != nil {
 			log.Fatalf("error: %s", err)
 		}
-		newTableCfg := make([]byte, dataLength)
-		_, err = conn.Read(newTableCfg)
+		data = make([]byte, dataLength)
+		_, err = conn.Read(data)
 		if err != nil {
 			log.Fatalf("read error: %s", err)
 		}
 		println("New table created! Config:")
-		println(string(newTableCfg))
+		println(string(data))
 		println("")
-	} else {
-		// Put Item CMD
+	}
+
+	// ----------------------------------------------
+	// 			Put Item
+	// ----------------------------------------------
+	if DO_PUT {
 		err = binary.Write(conn, binary.BigEndian, CMD_PUT_ITEM)
 		if err != nil {
 			log.Fatalf("error: %s", err)
 		}
 
 		// Send Table Name
-		var tableName string = "table1"
 		err = binary.Write(conn, binary.BigEndian, uint8(len(tableName)))
 		if err != nil {
 			log.Fatalf("error: %s", err)
@@ -154,6 +186,83 @@ func main() {
 			log.Fatalf("error: %s", err)
 		}
 
+		// @TODO: read cmd
+		// read cmd
+		_, err = conn.Read(b)
+		if err != nil {
+			log.Fatalf("cmd response read error: %s", err)
+		}
+		cmdResponse = b[0]
+		if cmdResponse != CMD_PUT_ITEM {
+			log.Fatalf("wrong response code: %d", cmdResponse)
+		}
+
+		// Read put response value -- disabled
+		// err = binary.Read(conn, binary.BigEndian, &dataLength)
+		// if err != nil {
+		// 	log.Fatalf("error: %s", err)
+		// }
+		// data = make([]byte, dataLength)
+		// _, err = conn.Read(data)
+		// if err != nil {
+		// 	log.Fatalf("read GET data error: %s", err)
+		// }
+		// log.Printf("Item Value: %s", string(data))
+	}
+
+	// ----------------------------------------------
+	// 			Get Item
+	// ----------------------------------------------
+	if DO_GET {
+		err = binary.Write(conn, binary.BigEndian, CMD_GET_ITEM)
+		if err != nil {
+			log.Fatalf("error: %s", err)
+		}
+
+		// Send Table Name
+		err = binary.Write(conn, binary.BigEndian, uint8(len(tableName)))
+		if err != nil {
+			log.Fatalf("error: %s", err)
+		}
+		err = binary.Write(conn, binary.BigEndian, []byte(tableName))
+		if err != nil {
+			log.Fatalf("error: %s", err)
+		}
+
+		// Send Key -- PartKey type is int64 by default
+		err = binary.Write(conn, binary.BigEndian, uint32(8))
+		if err != nil {
+			log.Fatalf("error: %s", err)
+		}
+		err = binary.Write(conn, binary.BigEndian, int64(123456))
+		if err != nil {
+			log.Fatalf("error: %s", err)
+		}
+
+		// @TODO: $ITT Get Item CMD is not being sent!!
+
+		// Read resp cmd
+		_, err = conn.Read(b)
+		if err != nil {
+			log.Fatalf("cmd response read error: %s", err)
+		}
+		cmdResponse = b[0]
+		if cmdResponse != CMD_GET_ITEM {
+			log.Fatalf("wrong response code: %d", cmdResponse)
+		}
+
+		// Read value
+		err = binary.Read(conn, binary.BigEndian, &dataLength)
+		if err != nil {
+			log.Fatalf("error: %s", err)
+		}
+		data = make([]byte, dataLength)
+		_, err = conn.Read(data)
+		if err != nil {
+			log.Fatalf("read GET data error: %s", err)
+		}
+
+		log.Printf("Item Value: %s", string(data))
 	}
 
 	// reply := make([]byte, 256)

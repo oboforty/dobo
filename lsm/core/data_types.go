@@ -27,7 +27,7 @@ const (
 	FOUND_AT_SS
 )
 
-type ItemWrite[K cmp.Ordered] struct {
+type Item[K cmp.Ordered] struct {
 	PartKey K
 	SortKey any
 	Value   []byte
@@ -42,6 +42,14 @@ type ItemQuery[K cmp.Ordered] struct {
 	FoundIn      FindStatus
 	FoundSSLevel int8
 	FoundSSIdx   uint32
+}
+
+func (q ItemQuery[K]) AsItem() *Item[K] {
+	return &Item[K]{
+		PartKey: q.PartKey,
+		SortKey: q.SortKey,
+		Value:   q.Value,
+	}
 }
 
 type TypeInfo struct {

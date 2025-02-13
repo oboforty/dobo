@@ -23,16 +23,20 @@ async def main():
         print("---------------")
 
         if TABLE_NAME not in tables:
-            await node.create_table(TABLE_NAME, {
+            await node.create_table({
                 "name": TABLE_NAME,
                 # "key_type": "int64"
             })
 
         table = Table[int](node, "table1")
+        # table.type_hint = int
 
         print("Inserting new item")
         val = b"""{"name":"Rajmund", "age": 350, "data":{"attr1": "asdasd", "adas": 123}, "teso": false}"""
         await table.put_item(123456, val)
+
+        # val = b"""{"name":"Rajmund", "age": 350, "data":{"attr1": "asdasd", "adas": 123}, "teso": false}"""
+        # await table.put_item(123123, val)
 
         # Should automatically convert value json bytes to dict
         item = await table.get_item(123456, dict)

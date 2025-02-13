@@ -5,9 +5,10 @@ from typing import Literal, TypeAliasType
 
 from .node import NodeCommandWrapper
 
-type KeyTypes = int | float | str | bytes | Literal["int32", "float32"]
+type KeyTypes = int | float | str | bytes
 type ValueTypes = int | float | str | bytes | dict | list | set | tuple
 
+type TypeHintTypes = Literal["float32", "int32"] | type[ValueTypes] | None
 
 # "type" variables to mark golang specific key types
 int32 = "int32"
@@ -28,9 +29,10 @@ class Table[P: KeyTypes]:
     def __init__(self, node: NodeCommandWrapper, table: str):
         self.node = node
         self.table = table
+        self.type_hint: TypeHintTypes = None
 
-    async def get_item[V: ValueTypes](self, key: P, return_type: type[V]) -> ItemGeneric[P, V]:
-        key_bytes = convert_bytes(key)
+    async def get_item[V: ValueTypes](self, key: P, return_type: TypeHintTypes=None) -> ItemGeneric[P, V]:
+        key_bytes = convert_bytes(key, self.type_hint)
         item = await self.node.get_item(self.table, key_bytes)
 
         value_bytes: V = convert_from_bytes(item.value, return_type)
@@ -41,7 +43,7 @@ class Table[P: KeyTypes]:
         )
 
     async def put_item[V: ValueTypes](self, key: P, value: V) -> V:
-        key_bytes = convert_bytes(key)
+        key_bytes = convert_bytes(key, self.type_hint)
         value_bytes = convert_bytes(value)
 
         await self.node.put_item(self.table, key_bytes, value_bytes)
@@ -49,7 +51,7 @@ class Table[P: KeyTypes]:
         return value
 
 
-def convert_bytes(data: ValueTypes) -> bytes:
+def convert_bytes(data: ValueTypes, type_hint: TypeHintTypes = None) -> bytes:
     """
     Key Types mapping:
 
@@ -86,9 +88,16 @@ def convert_bytes(data: ValueTypes) -> bytes:
     #       parquet, pbuf, asn1?
 
     if isinstance(data, int):
-        return struct.pack("i", data)
+        if type_hint == int32:
+            return struct.pack("!I", data)
+        else:
+            return struct.pack("!Q", data)
+        # return struct.pack("!B", data)
     elif isinstance(data, float):
-        return struct.pack("f", data)
+        if type_hint == int32:
+            return struct.pack("!f", data)
+        else:
+            return struct.pack("!d", data)
     elif isinstance(data, str):
         return data.encode("utf-8")
     elif isinstance(data, bytes):
@@ -99,21 +108,25 @@ def convert_bytes(data: ValueTypes) -> bytes:
         raise TypeError(f"Unsupported data type: {type(data)}")
 
 
-def convert_from_bytes[V: ValueTypes](data: bytes, data_type: type[V]) -> V:
+def convert_from_bytes[V: ValueTypes](data: bytes, type_hint: TypeHintTypes = None) -> V:
     # data_type = convert_from_bytes.__annotations__
 
-    if data_type == int:
-        return struct.unpack("i", data)[0]
-    elif data_type == float:
-        return struct.unpack("f", data)[0]
-    elif data_type == str:
+    if type_hint == int:
+        return struct.pack("!Q", data)
+    elif type_hint == int32:
+        return struct.pack("!I", data)
+    elif type_hint == float:
+        return struct.unpack("!d", data)[0]
+    elif type_hint == float32:
+        return struct.unpack("!f", data)[0]
+    elif type_hint == str:
         return data.decode("utf-8")
-    elif data_type == bytes:
+    elif type_hint == bytes or type_hint is None:
         return data
-    elif data_type in (dict, set, list, tuple):
-        return json.loads(data.decode("utf-8"))
+    elif type_hint in (dict, set, list, tuple):
+        return json.loads(data)
     else:
-        raise TypeError(f"Unsupported data type: {data_type}")
+        raise TypeError(f"Unsupported data type: {type_hint}")
 
 
 def custom_encoder(obj):

@@ -1,7 +1,6 @@
 package ioutils
 
 import (
-	"bytes"
 	"encoding/binary"
 	"io"
 )
@@ -15,6 +14,7 @@ type keyLengthTypes interface {
 func ReadDynamic[LT keyLengthTypes](reader io.Reader) ([]byte, error) {
 	var dataLength LT
 	err := binary.Read(reader, binary.BigEndian, &dataLength)
+
 	if err != nil {
 		return nil, err
 	}
@@ -25,6 +25,7 @@ func ReadDynamic[LT keyLengthTypes](reader io.Reader) ([]byte, error) {
 
 	dataBytes := make([]byte, dataLength)
 	_, err = reader.Read(dataBytes)
+
 	if err != nil {
 		return nil, err
 	}
@@ -34,6 +35,7 @@ func ReadDynamic[LT keyLengthTypes](reader io.Reader) ([]byte, error) {
 
 func ReadDynamicValue[LT keyLengthTypes, P any](reader io.Reader, result *P) error {
 	valBytes, err := ReadDynamic[LT](reader)
+
 	if err != nil {
 		return err
 	}
@@ -44,7 +46,8 @@ func ReadDynamicValue[LT keyLengthTypes, P any](reader io.Reader, result *P) err
 	case *[]byte:
 		*v = valBytes
 	default:
-		err = binary.Read(bytes.NewReader(valBytes), binary.BigEndian, result)
+		_, err = binary.Decode(valBytes, binary.BigEndian, result)
+
 		if err != nil {
 			return err
 		}

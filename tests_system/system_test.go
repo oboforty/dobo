@@ -44,7 +44,7 @@ func TestReadWriteMemTable(t *testing.T) {
 	}
 
 	var key int32 = 1234567890
-	table.Upsert(&core.ItemWrite[int32]{
+	table.Upsert(&core.Item[int32]{
 		PartKey: key,
 		Value:   serialized,
 	})
@@ -83,7 +83,7 @@ func TestFlushMemTable(t *testing.T) {
 
 	// fill memtable up with string[ 8]
 	for i := range N_ITEMS {
-		table.Upsert(&core.ItemWrite[int32]{
+		table.Upsert(&core.Item[int32]{
 			PartKey: i,
 			Value:   RandAsciiByte(8),
 		})

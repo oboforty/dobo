@@ -49,7 +49,7 @@ func (rb *RBMemT[P]) Get(partKey P) *core.ItemQuery[P] {
 	return nil
 }
 
-func (rb *RBMemT[P]) Upsert(item *core.ItemWrite[P]) {
+func (rb *RBMemT[P]) Upsert(item *core.Item[P]) {
 	rb.tree.Put(item.PartKey, item.Value)
 
 	// Calculate memory allocation of item

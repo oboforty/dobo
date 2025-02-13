@@ -3,7 +3,6 @@ package commands
 import (
 	"cmp"
 	"fmt"
-	"io"
 	"net"
 
 	"github.com/oboforty/dobo/lsm"
@@ -18,14 +17,19 @@ const (
 	DEL_ITEM
 )
 
-func GetItem[P cmp.Ordered](table *lsm.LSMTreeTable[P], conn net.Conn, key *P) {
+func GetItem[P cmp.Ordered](table *lsm.LSMTreeTable[P], conn net.Conn, key *P) error {
 	item := table.Get(*key)
 
-	err := WriteItemIO(conn, item, 0)
-
-	if err != nil {
-		fmt.Printf("[%s] write error: %s (Get Item)", table.TableName(), err)
+	// content, err := SerializeItem(item.AsItem(), 0)
+	// if err != nil {
+	// 	fmt.Printf("[%s] write error: %s (Get Item)", table.TableName(), err)
+	// }
+	if item == nil {
+		// @TODO: handle error
+		return nil
 	}
+
+	return SendCommand(GET_ITEM, conn, item.Value)
 }
 
 func PutItem[P cmp.Ordered](table *lsm.LSMTreeTable[P], conn net.Conn, key *P) error {
@@ -35,14 +39,19 @@ func PutItem[P cmp.Ordered](table *lsm.LSMTreeTable[P], conn net.Conn, key *P) e
 		return err
 	}
 
-	item := core.ItemWrite[P]{
+	item := &core.Item[P]{
 		PartKey: *key,
 		Value:   value,
 	}
 
-	table.Upsert(&item)
+	table.Upsert(item)
+	// content, err := SerializeItem(item, 0)
 
-	return nil
+	// if err != nil {
+	// 	return err
+	// }
+
+	return SendCommand(PUT_ITEM, conn)
 }
 
 // func UpdateItem[P cmp.Ordered](table *lsm.LSMTreeTable[P], conn net.Conn, key *P, value []byte) {
@@ -69,7 +78,7 @@ func HandleItemCommand[T cmp.Ordered](table *lsm.LSMTreeTable[T], conn net.Conn,
 
 	switch cmd {
 	case GET_ITEM:
-		GetItem(table, conn, &key)
+		err = GetItem(table, conn, &key)
 	case PUT_ITEM:
 		err = PutItem(table, conn, &key)
 	// case UPD_ITEM:
@@ -84,23 +93,16 @@ func HandleItemCommand[T cmp.Ordered](table *lsm.LSMTreeTable[T], conn net.Conn,
 	return err
 }
 
-func WriteItemIO[P cmp.Ordered](writer io.Writer, item *core.ItemQuery[P], serType uint8) error {
-	var content []byte
-	var err error
+// func SerializeItem[P cmp.Ordered](item *core.Item[P], serType uint8) ([]byte, error) {
+// 	var content []byte
 
-	switch serType {
-	case 0: // raw
-		content = item.Value
-	case 1: // json
-	default:
-		return fmt.Errorf("invalid serialization format: %d", serType)
-	}
+// 	switch serType {
+// 	case 0: // raw
+// 		content = item.Value
+// 	case 1: // json
+// 	default:
+// 		return nil, fmt.Errorf("invalid serialization format: %d", serType)
+// 	}
 
-	err = ioutils.WriteDynamic[uint32](writer, content)
-
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
+// 	return content, nil
+// }

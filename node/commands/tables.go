@@ -40,7 +40,7 @@ func CreateTable(node Node, conn net.Conn) error {
 
 	if cfg.Name == "" {
 		binary.Write(conn, binary.BigEndian, CMD_ERROR)
-		binary.Write(conn, binary.BigEndian, uint8(1))
+		binary.Write(conn, binary.BigEndian, uint8(123))
 	}
 
 	// @TODO: make this overriddable later?
@@ -62,13 +62,13 @@ func CreateTable(node Node, conn net.Conn) error {
 		return err
 	}
 
-	err = WriteTableCfgIO(conn, cfg, cfgType)
+	cfgContent, err := TableCfgBytes(cfg, cfgType)
 
 	if err != nil {
 		return err
 	}
 
-	return nil
+	return SendCommand(CREATE_TABLE, conn, cfgContent)
 }
 
 func DropTable(table lsm.LSMTreeTableInterface, conn net.Conn) error {
@@ -84,7 +84,7 @@ func SetConfigTable(table lsm.LSMTreeTableInterface, conn net.Conn) error {
 
 func ListTables(node Node, conn net.Conn) error {
 	tt := node.ListTables()
-	var tables []string = make([]string, len(tt))
+	var tables []string = make([]string, 0, len(tt))
 
 	for tableName := range tt {
 		tables = append(tables, tableName)
@@ -97,7 +97,7 @@ func ListTables(node Node, conn net.Conn) error {
 		return err
 	}
 
-	return ioutils.WriteDynamicValue[uint32](conn, tablesJson)
+	return SendCommand(LIST_TABLES, conn, tablesJson)
 }
 
 func HandleTableCommand(table lsm.LSMTreeTableInterface, conn net.Conn, cmd CommandType) error {
@@ -155,7 +155,7 @@ func ReadTableCfgIO(reader io.Reader, cfgType *uint8) (*lsm.CfgTable, error) {
 	return cfg, nil
 }
 
-func WriteTableCfgIO(writer io.Writer, cfg *lsm.CfgTable, cfgType uint8) error {
+func TableCfgBytes(cfg *lsm.CfgTable, cfgType uint8) ([]byte, error) {
 	var cfgContent []byte
 	var err error
 
@@ -164,23 +164,17 @@ func WriteTableCfgIO(writer io.Writer, cfg *lsm.CfgTable, cfgType uint8) error {
 		cfgContent, err = toml.Marshal(cfg)
 
 		if err != nil {
-			return fmt.Errorf("toml write error: %s", err)
+			return nil, fmt.Errorf("toml write error: %s", err)
 		}
 	case 1: // json
 		cfgContent, err = json.Marshal(cfg)
 
 		if err != nil {
-			return fmt.Errorf("json write error: %s", err)
+			return nil, fmt.Errorf("json write error: %s", err)
 		}
 	default:
-		return fmt.Errorf("invalid cfg format: %d", cfgType)
+		return nil, fmt.Errorf("invalid cfg format: %d", cfgType)
 	}
 
-	err = ioutils.WriteDynamic[uint32](writer, cfgContent)
-
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return cfgContent, nil
 }

@@ -8,6 +8,8 @@ from socket import socket
 from types import TracebackType
 from typing import Literal, Self, Type, AsyncContextManager, Any, Iterable
 
+CMD_ERR = 2
+
 
 class ServerNodeAsync:
     def __init__(self, host: str, tls_cert: str, tls_key: str):
@@ -75,16 +77,25 @@ class ServerNodeAsync:
 
         return await self.reader.read(data_length)
 
-    async def request(self, /, cmd: int, *, table: str = None, payload: list[bytes] = None,
-                           expected_payloads: int = 1) -> tuple[bytes, ...]:
+    async def request(
+        self, /, cmd: int, *,
+        table: str = None,
+        payload_format: int = None,
+        dynamic_payload: list[bytes] = None,
+        expected_payloads: int = 1
+    ) -> tuple[bytes, ...]:
         # TODO: wrap in exception
 
         # Request
         self.writer.write(struct.pack("!B", cmd))
         if table:
             self.write_dynamic(table.encode('ascii'), recv_kl=1)
-        if payload:
-            for data in payload:
+
+        if payload_format:
+            self.writer.write(struct.pack("!B", payload_format))
+
+        if dynamic_payload:
+            for data in dynamic_payload:
                 self.write_dynamic(data, recv_kl=4)
 
         await self.writer.drain()
@@ -103,7 +114,6 @@ class ServerNodeAsync:
             resp_payloads: list[bytes] = []
             for i in range(expected_payloads):
                 resp_payloads.append(await self.recv_dynamic())
-
             return tuple(resp_payloads)
 
 
@@ -114,13 +124,6 @@ class Item:
     # metadata: dict[str, Any]
 
 
-CMD_OK = 1
-CMD_ERR = 2
-
-DTYPE_INT32 = "int32"
-DTYPE_FLOAT32 = "float32"
-
-
 class NodeCommandWrapper:
     def __init__(self, conn: ServerNodeAsync):
         self.conn = conn
@@ -128,36 +131,22 @@ class NodeCommandWrapper:
     async def list_tables(self) -> list[str]:
         tables_json, = await self.conn.request(4)
 
-        # TODO: $ITT: breaks
-"""
-  File "/home/rajmund_csombordi/dev/spikes/dobo/dbobo/dbobo/node.py", line 131, in list_tables
-    return json.loads(tables_json)
-           ^^^^^^^^^^^^^^^^^^^^^^^
-  File "/usr/lib/python3.12/json/__init__.py", line 346, in loads
-    return _default_decoder.decode(s)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/usr/lib/python3.12/json/decoder.py", line 340, in decode
-    raise JSONDecodeError("Extra data", s, end)
-json.decoder.JSONDecodeError: Extra data: line 1 column 3 (char 2)
-
-
-"""
         return json.loads(tables_json)
 
-    async def create_table(self, table: str, cfg: dict) -> dict:
+    async def create_table(self, cfg: dict) -> dict:
         cfg1, = await self.conn.request(
             cmd=11,
-            payload=[
+            payload_format=1, # cfg type = json
+            dynamic_payload=[
                 json.dumps(cfg).encode('ascii')
             ]
         )
-        print("@@@", cfg1)
 
     async def get_item(self, table: str, key: bytes) -> Item:
         value, = await self.conn.request(
-            cmd=8,
+            cmd=20,
             table=table,
-            payload=[key],
+            dynamic_payload=[key],
             expected_payloads=1
         )
 
@@ -165,8 +154,11 @@ json.decoder.JSONDecodeError: Extra data: line 1 column 3 (char 2)
 
     async def put_item(self, table: str, key: bytes, value: bytes):
         await self.conn.request(
-            cmd=8,
+            cmd=21,
             table=table,
-            payload=[key, value],
+            dynamic_payload=[
+                key,
+                value
+            ],
             expected_payloads=0
         )

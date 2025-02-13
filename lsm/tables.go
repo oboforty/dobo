@@ -29,7 +29,7 @@ type MemTable[P cmp.Ordered] interface {
 	sstable.IterableTable[P]
 
 	Get(P) *core.ItemQuery[P]
-	Upsert(*core.ItemWrite[P])
+	Upsert(*core.Item[P])
 	Delete(P)
 
 	ByteSize() uint32
@@ -80,7 +80,7 @@ func (t *LSMTreeTable[P]) Get(partKey P) *core.ItemQuery[P] {
 	return item
 }
 
-func (t *LSMTreeTable[P]) Upsert(item *core.ItemWrite[P]) bool {
+func (t *LSMTreeTable[P]) Upsert(item *core.Item[P]) bool {
 	t.MemTable.Upsert(item)
 
 	// Mem Tree has grown to its limit. recommend client to trigger flush task

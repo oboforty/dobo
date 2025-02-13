@@ -18,12 +18,13 @@ func (node *Node) handleCommands(conn net.Conn) {
 		b := make([]byte, 1)
 		_, err := conn.Read(b)
 		if err != nil {
-			if err == io.EOF {
-				break
+			if err != io.EOF {
+				log.Printf("[Cmd] Read error: %s", err)
 			}
 
-			log.Printf("[Cmd] command parsing error: %s", err)
-			continue
+			// TODO: handle disconnect
+			conn.Close()
+			break
 		}
 
 		var cmd commands.CommandType = b[0]
@@ -32,7 +33,14 @@ func (node *Node) handleCommands(conn net.Conn) {
 		var tableIF lsm.LSMTreeTableInterface
 
 		if !ok {
-			log.Printf("[Cmd] Invalid command: %d", cmd)
+			remBytes, err := io.ReadAll(conn)
+
+			if err != nil {
+				println("HUHH ???", err)
+			}
+
+			log.Printf("[Cmd] Invalid command: %d. Remaining bytes: %v", cmd, remBytes)
+
 			continue
 		} else {
 			log.Printf("[Cmd] Running command: %s", cmdDescr.Name)

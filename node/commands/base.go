@@ -1,5 +1,11 @@
 package commands
 
+import (
+	"io"
+
+	"github.com/oboforty/dobo/lsm/core/ioutils"
+)
+
 type CommandType = byte
 
 type CommandDescription struct {
@@ -28,4 +34,32 @@ var CMD_DESCR = map[byte]CommandDescription{
 	PUT_ITEMS: {Name: "Insert Items"},
 	UPD_ITEMS: {Name: "Update Items"},
 	DEL_ITEMS: {Name: "Delete Items"},
+}
+
+func SendCommand(cmd CommandType, writer io.Writer, payloads ...[]byte) error {
+	_, err := writer.Write([]byte{cmd})
+	if err != nil {
+		return err
+	}
+
+	for _, payload := range payloads {
+		err = ioutils.WriteDynamicValue[uint32](writer, payload)
+
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func SendError(writer io.Writer, reason string) error {
+	_, err := writer.Write([]byte{CMD_ERROR})
+	if err != nil {
+		return err
+	}
+
+	err = ioutils.WriteDynamicValue[uint32](writer, reason)
+
+	return err
 }

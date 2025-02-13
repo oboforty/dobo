@@ -127,7 +127,7 @@ func (ss *SSTable[P]) WriteToDisc(table IterableTable[P]) error {
 	}
 
 	if currentSummary.MaxBlockOffset != 0 {
-		println("@@@@ THIS SHOULD BE 0: ", currentSummary.MaxBlockOffset)
+		println("WTF ERROR: @@__@ THIS SHOULD BE 0: ", currentSummary.MaxBlockOffset)
 	}
 
 	// Write last summary entry -- calc upper bound of last
