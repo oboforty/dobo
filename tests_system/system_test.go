@@ -81,7 +81,7 @@ func TestFlushMemTable(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// fill memtable up with string[ 8]
+	// Arrange - fill memtable up with string[ 8]
 	for i := range N_ITEMS {
 		table.Upsert(&core.Item[int32]{
 			PartKey: i,
@@ -89,12 +89,16 @@ func TestFlushMemTable(t *testing.T) {
 		})
 	}
 
+	// Assert - At this point memtable should be full
 	if !table.MemTable.IsFull() {
 		expectedSize := unitSize * uint32(N_ITEMS)
 
 		t.Error("Memtable was expected to be full after: ", expectedSize)
 		t.FailNow()
 	}
+
+	// Act - delete an item
+	table.Delete(5)
 
 	// Act - flush memtable to disc
 	if err = table.FlushMemToDisc(); err != nil {
@@ -104,11 +108,27 @@ func TestFlushMemTable(t *testing.T) {
 
 	// Assert - memtable is cleared
 	if table.MemTable.ByteSize() != 0 {
+		t.Error("MemTable should have be empty!")
 		t.FailNow()
 	}
 
 	// Assert - SSTable is created
-	if len(table.SSTables) != 1 && table.SSTables[0].GetGenerationId() == table.CurrentGenerationId() {
+	if len(table.SSTables) != 1 || table.SSTables[0].GetGenerationId() != table.CurrentGenerationId() {
+		t.Error("SSTable GenId mismatch")
+		t.FailNow()
+	}
+
+	// Assert - get item from disc
+	item := table.Get(4)
+	if item.PartKey != 4 || len(item.Value) != 8 {
+		t.Error("SSTable GET fail")
+		t.FailNow()
+	}
+
+	// Assert - get deleted item from disc
+	item = table.Get(5)
+	if item.PartKey != 5 || item.Value != nil || !item.Deleted {
+		t.Error("SSTable GET deleted fail")
 		t.FailNow()
 	}
 }

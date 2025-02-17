@@ -1,46 +1,53 @@
 package memtable
 
 import (
-	"cmp"
 	"iter"
 	"unsafe"
 
 	"github.com/oboforty/dobo/lsm/core"
-
-	rbt "github.com/emirpasic/gods/v2/trees/redblacktree"
-	// cmp "github.com/emirpasic/gods/v2/utils"
+	rbt "github.com/oboforty/dobo/lsm/trees/redblacktree"
 )
 
 // Calculate the size of a RB Tree Node, without the Key & Value sizes
 const RB_NODE_PTRS_SIZE = uint32(unsafe.Sizeof(rbt.Node[int8, int8]{}) - (unsafe.Sizeof(int8(0)) * 2))
 
 // MemTable implementing Red-Black Balanced Trees
-type RBMemT[P cmp.Ordered] struct {
-	MemT[P]
+type RBMemT[P core.PartKeyTypes] struct {
+	MemT
 
 	tree *rbt.Tree[P, []byte]
 }
 
-func NewRedBlack[P cmp.Ordered](cfg *CfgMemtable, partKeyTypeInfo *core.TypeInfo) *RBMemT[P] {
+func NewRedBlack[P core.PartKeyTypes](cfg *CfgMemtable, partKeyTypeInfo *core.TypeInfo) *RBMemT[P] {
 	rb := &RBMemT[P]{
-		MemT: MemT[P]{
+		MemT: MemT{
 			partKeyTypeInfo: partKeyTypeInfo,
 			maxSize:         cfg.MaxByteSize,
 		},
 	}
-	rb.tree = rbt.New[P, []byte]()
+	rb.tree = rbt.NewWith[P, []byte](core.UberComparator)
 
 	return rb
 }
 
 func (rb *RBMemT[P]) Get(partKey P) *core.ItemQuery[P] {
-	node := rb.tree.GetNode(partKey)
+	leaf := rb.tree.GetNode(partKey)
 
-	if node != nil {
+	if leaf != nil {
+
+		if leaf.Value == nil {
+			// nil means Tombstone (item deleted)
+			return &core.ItemQuery[P]{
+				PartKey:      leaf.Key,
+				FoundIn:      core.FOUND_AT_MEM,
+				FoundSSLevel: -1,
+				Deleted:      true,
+			}
+		}
+
 		return &core.ItemQuery[P]{
-			PartKey: node.Key,
-			Value:   node.Value,
-
+			PartKey:      leaf.Key,
+			Value:        leaf.Value,
 			FoundIn:      core.FOUND_AT_MEM,
 			FoundSSLevel: -1,
 		}
@@ -64,8 +71,21 @@ func (rb *RBMemT[P]) Upsert(item *core.Item[P]) {
 	rb.byteSize += uint32(len(item.Value)) + RB_NODE_PTRS_SIZE
 }
 
-func (rb *RBMemT[P]) Delete(partKey P) {
-	// @TODO
+// Adds a tombstone entry to RB Tree. Returns true if item has been deleted in memory
+func (rb *RBMemT[P]) Delete(partKey P) bool {
+	leaf := rb.tree.GetNode(partKey)
+
+	if leaf != nil {
+		// set the entry to be a tombstone
+		leaf.Value = nil
+
+		return true
+	} else {
+		// add a tombstone entry
+		rb.tree.Put(partKey, nil)
+
+		return false
+	}
 }
 
 func (rb *RBMemT[P]) ItemIterator() iter.Seq[*core.ItemQuery[P]] {

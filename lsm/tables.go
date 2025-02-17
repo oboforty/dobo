@@ -1,7 +1,6 @@
 package lsm
 
 import (
-	"cmp"
 	"log"
 
 	"github.com/oboforty/dobo/lsm/core"
@@ -9,7 +8,7 @@ import (
 	"github.com/oboforty/dobo/lsm/sstable"
 )
 
-type LSMTreeTable[P cmp.Ordered] struct {
+type LSMTreeTable[P core.PartKeyTypes] struct {
 	cfg             CfgTable
 	partKeyTypeInfo core.TypeInfo
 
@@ -19,18 +18,18 @@ type LSMTreeTable[P cmp.Ordered] struct {
 	Wal      WAL
 }
 
-type SSTable[P cmp.Ordered] interface {
+type SSTable[P core.PartKeyTypes] interface {
 	Get(P) *core.ItemQuery[P]
 
 	GetGenerationId() int
 }
 
-type MemTable[P cmp.Ordered] interface {
+type MemTable[P core.PartKeyTypes] interface {
 	sstable.IterableTable[P]
 
 	Get(P) *core.ItemQuery[P]
 	Upsert(*core.Item[P])
-	Delete(P)
+	Delete(P) bool
 
 	ByteSize() uint32
 	IsFull() bool
@@ -40,7 +39,7 @@ type MemTable[P cmp.Ordered] interface {
 type WAL interface {
 }
 
-func New[P cmp.Ordered](cfg *CfgTable) (*LSMTreeTable[P], error) {
+func New[P core.PartKeyTypes](cfg *CfgTable) (*LSMTreeTable[P], error) {
 	cfg.ApplyDefaults()
 
 	t := &LSMTreeTable[P]{

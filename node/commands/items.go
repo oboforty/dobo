@@ -1,7 +1,6 @@
 package commands
 
 import (
-	"cmp"
 	"fmt"
 	"net"
 
@@ -17,7 +16,7 @@ const (
 	DEL_ITEM
 )
 
-func GetItem[P cmp.Ordered](table *lsm.LSMTreeTable[P], conn net.Conn, key *P) error {
+func GetItem[P core.PartKeyTypes](table *lsm.LSMTreeTable[P], conn net.Conn, key *P) error {
 	item := table.Get(*key)
 
 	// content, err := SerializeItem(item.AsItem(), 0)
@@ -32,7 +31,7 @@ func GetItem[P cmp.Ordered](table *lsm.LSMTreeTable[P], conn net.Conn, key *P) e
 	return SendCommand(GET_ITEM, conn, item.Value)
 }
 
-func PutItem[P cmp.Ordered](table *lsm.LSMTreeTable[P], conn net.Conn, key *P) error {
+func PutItem[P core.PartKeyTypes](table *lsm.LSMTreeTable[P], conn net.Conn, key *P) error {
 	value, err := ioutils.ReadDynamic[uint32](conn)
 
 	if err != nil {
@@ -54,19 +53,19 @@ func PutItem[P cmp.Ordered](table *lsm.LSMTreeTable[P], conn net.Conn, key *P) e
 	return SendCommand(PUT_ITEM, conn)
 }
 
-// func UpdateItem[P cmp.Ordered](table *lsm.LSMTreeTable[P], conn net.Conn, key *P, value []byte) {
+// func UpdateItem[P core.PartKeyTypes](table *lsm.LSMTreeTable[P], conn net.Conn, key *P, value []byte) {
 // 	var val []byte
 // 	ioutils.GetVal(&val)
 // 	item := table.Update(key)
 // 	fmt.Println("UPDATE:", item)
 // }
 
-func DeleteItem[P cmp.Ordered](table *lsm.LSMTreeTable[P], conn net.Conn, key *P) {
+func DeleteItem[P core.PartKeyTypes](table *lsm.LSMTreeTable[P], conn net.Conn, key *P) {
 	table.Delete(*key)
 	fmt.Println("DELETE:", *key)
 }
 
-func HandleItemCommand[T cmp.Ordered](table *lsm.LSMTreeTable[T], conn net.Conn, cmd CommandType) error {
+func HandleItemCommand[T core.PartKeyTypes](table *lsm.LSMTreeTable[T], conn net.Conn, cmd CommandType) error {
 	var key T
 	var err error
 
@@ -93,7 +92,7 @@ func HandleItemCommand[T cmp.Ordered](table *lsm.LSMTreeTable[T], conn net.Conn,
 	return err
 }
 
-// func SerializeItem[P cmp.Ordered](item *core.Item[P], serType uint8) ([]byte, error) {
+// func SerializeItem[P core.PartKeyTypes](item *core.Item[P], serType uint8) ([]byte, error) {
 // 	var content []byte
 
 // 	switch serType {

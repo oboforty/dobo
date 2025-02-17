@@ -1,7 +1,8 @@
 package sstable
 
 import (
-	"cmp"
+	"fmt"
+	"os"
 	"path/filepath"
 	"strconv"
 
@@ -17,16 +18,16 @@ type BloomFilter interface {
 	LoadFromDisc(string) error
 }
 
-type SSTable[P cmp.Ordered] struct {
+type SSTable[P core.PartKeyTypes] struct {
 	GenerationId    int
-	Statistics      map[string]float32
 	partKeyTypeInfo core.TypeInfo
+	Statistics      map[string]float32
+	summaries       []IndexSummary[P]
 
 	tablePath            string
 	compressionBlockSize uint32
 
-	bloom     BloomFilter
-	summaries []IndexSummary[P]
+	bloom BloomFilter
 }
 
 type CfgSSTable struct {
@@ -36,17 +37,17 @@ type CfgSSTable struct {
 	BloomFilter bloom.CfgBloomFilter `toml:"bloom" json:"bloom"`
 }
 
-type IndexSummary[P cmp.Ordered] struct {
+type IndexSummary[P core.PartKeyTypes] struct {
+	Id             int16
 	MinKey         P
 	MinBlockOffset uint32
 	MaxKey         P
 	MaxBlockOffset uint32
 
-	Id              int16
-	PartKeyTypeInfo *core.TypeInfo
+	// PartKeyTypeInfo *core.TypeInfo
 }
 
-func New[P cmp.Ordered](cfg *CfgSSTable, tableName string, pkt core.TypeInfo, id int) *SSTable[P] {
+func New[P core.PartKeyTypes](cfg *CfgSSTable, tableName string, pkt core.TypeInfo, id int) *SSTable[P] {
 	ss := &SSTable[P]{
 		partKeyTypeInfo:      pkt,
 		tablePath:            filepath.Join(cfg.DBPath, tableName),
@@ -84,7 +85,7 @@ func (ss *SSTable[P]) Get(partKey P) *core.ItemQuery[P] {
 
 	var idxRange *IndexSummary[P]
 	for _, sum := range ss.summaries {
-		if sum.MinKey <= partKey && partKey <= sum.MaxKey {
+		if core.UberComparator(sum.MinKey, partKey) == -1 && core.UberComparator(partKey, sum.MaxKey) == -1 {
 			idxRange = &sum
 		}
 	}
@@ -116,17 +117,24 @@ func (ss *SSTable[P]) Get(partKey P) *core.ItemQuery[P] {
 	if err != nil {
 		panic(err)
 	}
+
 	if vhit == nil {
 		// @TODO: Panic?
 		return nil
+	} else if vhit.Value == nil {
+		return &core.ItemQuery[P]{
+			PartKey:    partKey,
+			Value:      nil,
+			FoundIn:    core.FOUND_AT_SS,
+			FoundSSIdx: uint32(ss.GenerationId),
+			Deleted:    true,
+		}
 	}
 
 	return &core.ItemQuery[P]{
 		PartKey: partKey,
 		Value:   vhit.Value,
-
 		FoundIn: core.FOUND_AT_SS,
-		// FoundSSLevel: ss.Level,
 	}
 }
 
@@ -138,3 +146,16 @@ func (ss *SSTable[P]) Get(partKey P) *core.ItemQuery[P] {
 // func (ss *SSTable[P]) Delete(partKey interface{}) {
 // 	rb.tree.Remove(partKey)
 // }
+
+func (ss *SSTable[P]) LoadFromDisc() error {
+	file, err := os.Open(ss.FileBase() + ".sum")
+	if err != nil {
+		return fmt.Errorf("failed to open file: %w", err)
+	}
+	defer file.Close()
+
+	// load bloom filter
+	ss.bloom.LoadFromDisc(ss.FileBase() + ".bf")
+
+	return ReadSummaryFile(file, ss)
+}

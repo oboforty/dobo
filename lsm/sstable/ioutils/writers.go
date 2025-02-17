@@ -15,16 +15,6 @@ type BlockWriter interface {
 	GetOffsets() (blockOffset uint32, interBlockOffset uint32)
 }
 
-type blockWriter struct {
-	filename  string
-	file      *os.File
-	bufWriter *bufio.Writer
-
-	blockSize        int
-	blockOffset      uint32
-	interBlockOffset uint32
-}
-
 func NewBlockWriter(filename string, blockSize uint32, compressMethod bool) (BlockWriter, error) {
 	file, err := os.OpenFile(filename, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
 	if err != nil {
@@ -35,20 +25,30 @@ func NewBlockWriter(filename string, blockSize uint32, compressMethod bool) (Blo
 		// @TODO: also add buffered IO for this!
 		return &compressedBlockWriter{
 			blockSize: int(blockSize),
-			filename:  filename,
-			file:      file,
-			buffer:    bytes.Buffer{},
+			// filename:  filename,
+			file:   file,
+			buffer: bytes.Buffer{},
 		}, nil
 	} else {
 		w := bufio.NewWriter(file)
 
 		return &blockWriter{
 			blockSize: int(blockSize),
-			filename:  filename,
+			// filename:  filename,
 			file:      file,
 			bufWriter: w,
 		}, nil
 	}
+}
+
+type blockWriter struct {
+	// filename  string
+	file      *os.File
+	bufWriter *bufio.Writer
+
+	blockSize        int
+	blockOffset      uint32
+	interBlockOffset uint32
 }
 
 func (bw *blockWriter) Write(data []byte) (int, error) {
@@ -83,8 +83,8 @@ func (bw *blockWriter) Close() error {
 
 // compressedBlockWriter handles writing compressed blocks of data to a file with buffering
 type compressedBlockWriter struct {
-	filename string
-	file     *os.File
+	// filename string
+	file *os.File
 
 	// compressMethod CompressionAlgorithm
 	buffer           bytes.Buffer

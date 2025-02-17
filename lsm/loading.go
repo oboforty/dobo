@@ -134,6 +134,7 @@ func (t *LSMTreeTable[P]) loadSSTables() error {
 		)
 		log.Printf("[SST] loading table %s from %s", t.cfg.Name, sst.FileBase())
 		sst.LoadFromDisc()
+		sst.Statistics["lvl"] = 1
 
 		t.SSTables = append(t.SSTables, sst)
 	}

@@ -1,11 +1,28 @@
 package core
 
 import (
-	"cmp"
 	"errors"
 	"reflect"
 	"unsafe"
 )
+
+type Item[K PartKeyTypes] struct {
+	PartKey K
+	SortKey any
+	Value   []byte
+}
+
+type ItemQuery[K PartKeyTypes] struct {
+	PartKey K
+	SortKey any
+	Value   []byte
+
+	// todo: put these into metadata? or we'll put them at api json lvl?
+	FoundIn      FindStatus
+	FoundSSLevel int8
+	FoundSSIdx   uint32
+	Deleted      bool
+}
 
 type DataType string
 
@@ -26,23 +43,6 @@ const (
 	FOUND_AT_BLOOM
 	FOUND_AT_SS
 )
-
-type Item[K cmp.Ordered] struct {
-	PartKey K
-	SortKey any
-	Value   []byte
-}
-
-type ItemQuery[K cmp.Ordered] struct {
-	PartKey K
-	SortKey any
-	Value   []byte
-
-	// todo: put these into metadata? or we'll put them at api json lvl?
-	FoundIn      FindStatus
-	FoundSSLevel int8
-	FoundSSIdx   uint32
-}
 
 func (q ItemQuery[K]) AsItem() *Item[K] {
 	return &Item[K]{

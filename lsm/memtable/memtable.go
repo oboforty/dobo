@@ -1,8 +1,6 @@
 package memtable
 
 import (
-	"cmp"
-
 	"github.com/oboforty/dobo/lsm/core"
 )
 
@@ -19,17 +17,17 @@ type CfgMemtable struct {
 	MaxByteSize uint32          `toml:"max_size" json:"max_size"`
 }
 
-type MemT[P cmp.Ordered] struct {
+type MemT struct {
 	partKeyTypeInfo *core.TypeInfo
 
 	maxSize  uint32
 	byteSize uint32
 }
 
-func (m *MemT[P]) ByteSize() uint32 {
+func (m *MemT) ByteSize() uint32 {
 	return m.byteSize
 }
 
-func (m *MemT[P]) IsFull() bool {
+func (m *MemT) IsFull() bool {
 	return m.maxSize <= m.byteSize
 }

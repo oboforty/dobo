@@ -8,6 +8,7 @@ import (
 	"io"
 	"os"
 
+	"github.com/oboforty/dobo/lsm/core"
 	"github.com/oboforty/dobo/lsm/core/ioutils"
 )
 
@@ -27,7 +28,7 @@ type ValueSearchHit struct {
 
 // LINEAR SEARCH
 // @TODO: implement binary search & use io.LimitReader(keyLength) instead
-func SearchOffsetInIndexFile[P comparable](
+func SearchOffsetInIndexFile[P core.PartKeyTypes](
 	filename string,
 	startBlockOffset,
 	stopBlockOffset uint32,
@@ -92,7 +93,7 @@ func SearchOffsetInIndexFile[P comparable](
 }
 
 // @TODO: implement binary search
-func SearchDataFileGzipBlock[P comparable](
+func SearchDataFileGzipBlock[P core.PartKeyTypes](
 	filename string,
 	startBlockOffset,
 	startInterBlockOffset int32,
@@ -126,10 +127,19 @@ func SearchDataFileGzipBlock[P comparable](
 		return nil, err
 	}
 
+	// @TODO: somewhere here handle Tombstone entries?
+
 	valueLengthBytes := decompressed[startInterBlockOffset : startInterBlockOffset+4]
 	valueLength := binary.BigEndian.Uint32(valueLengthBytes)
 	if valueLength > ioutils.MaxUIntDataLength {
 		return nil, fmt.Errorf("invalid value length found")
+	}
+
+	if valueLength == 0 {
+		// tombstone entry, deleted
+		return &ValueSearchHit{
+			Value: nil,
+		}, nil
 	}
 
 	value := decompressed[startInterBlockOffset+4 : startInterBlockOffset+4+int32(valueLength)]
