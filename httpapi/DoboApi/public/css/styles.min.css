@@ -1,0 +1,9 @@
+
+.vl {
+  border-left: 6px dotted rgb(72, 89, 255);
+  height: 250px;
+}
+
+.pointer {
+  cursor: pointer;
+}

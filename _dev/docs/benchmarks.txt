@@ -1,0 +1,13 @@
+RB Tree: 50k ins/del
+  python:
+      pytest test_rbtree.py::test_long
+      ---------------------------------------------
+      build & 1 access key:       0.100s, 0.080s
+      check at every step:        122.22s, 90.98s
+
+
+  go:     
+      redblack_test.go TestBuildTree
+      ---------------------------------------------
+      build & 1 access key:       0.100s
+      check at every step:        0.500s, 0.239s
