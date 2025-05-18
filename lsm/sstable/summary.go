@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/binary"
-	"fmt"
 	"io"
 	"os"
 	"strconv"
@@ -43,7 +42,7 @@ func ReadSummaryFile[P core.PartKeyTypes](file io.Reader, ss *SSTable[P]) error 
 	for {
 		sum := IndexSummary[P]{}
 
-		err = ioutils.ReadDynamicValue[uint32](file, &sum.MinKey)
+		err = ioutils.ReadDynamicValue[uint32](file, &sum.PartKey)
 		if err != nil {
 			if err == io.EOF {
 				// EOF really should only occur here
@@ -101,29 +100,27 @@ func (s summaryWriter[P]) WriteMetadata(metadata map[string]string, statistics m
 	return nil
 }
 
-func (s *summaryWriter[P]) StartRegion(id int, key P, indexBlockOffset uint32) {
+func (s *summaryWriter[P]) StartRegion(id int, keyLength uint32, key P, indexFileOffset uint32) (*IndexSummary[P], error) {
 	s.currentSummary = &IndexSummary[P]{
-		Id:             int16(id),
-		MinKey:         key,
-		MinBlockOffset: indexBlockOffset,
+		Id:              int16(id),
+		PartKey:         key,
+		IndexFileOffset: indexFileOffset,
 	}
-}
 
-func (s *summaryWriter[P]) StopRegion(key P, indexBlockOffset uint32) (*IndexSummary[P], error) {
-	s.currentSummary.MaxKey = key
-	s.currentSummary.MaxBlockOffset = indexBlockOffset
-
-	// @TOOD: WRITE TO DISC
 	buf := new(bytes.Buffer)
-	binary.Write(buf, binary.BigEndian, s.currentSummary.MinKey)
-	binary.Write(buf, binary.BigEndian, s.currentSummary.MaxKey)
-	binary.Write(buf, binary.BigEndian, s.currentSummary.MinBlockOffset)
-	binary.Write(buf, binary.BigEndian, s.currentSummary.MaxBlockOffset)
+	binary.Write(buf, binary.BigEndian, keyLength)
+	binary.Write(buf, binary.BigEndian, s.currentSummary.PartKey)
+	binary.Write(buf, binary.BigEndian, s.currentSummary.IndexFileOffset)
 
 	_, err := s.file.Write(buf.Bytes())
 	if err != nil {
 		return nil, err
 	}
+
+	return s.currentSummary, nil
+}
+
+func (s *summaryWriter[P]) StopRegion(key P, indexBlockOffset uint32) (*IndexSummary[P], error) {
 
 	sum := s.currentSummary
 	s.currentSummary = nil
@@ -136,9 +133,9 @@ func (s summaryWriter[P]) Empty() bool {
 }
 
 func (s summaryWriter[P]) AssertBlocksetOK() error {
-	if s.currentSummary.MaxBlockOffset != 0 {
-		return fmt.Errorf("WTF ERROR: @@__@ THIS SHOULD BE 0: %s", s.currentSummary.MaxBlockOffset)
-	}
+	// if s.currentSummary.MaxBlockOffset != 0 {
+	// 	return fmt.Errorf("WTF ERROR: @@__@ THIS SHOULD BE 0: %s", s.currentSummary.MaxBlockOffset)
+	// }
 
 	return nil
 }

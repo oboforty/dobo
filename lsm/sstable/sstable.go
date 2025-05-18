@@ -26,6 +26,8 @@ type SSTable[P core.PartKeyTypes] struct {
 
 	tablePath            string
 	compressionBlockSize uint32
+	MinIdxInterval       uint32
+	MaxIdxInterval       uint32
 
 	bloom BloomFilter
 }
@@ -33,18 +35,16 @@ type SSTable[P core.PartKeyTypes] struct {
 type CfgSSTable struct {
 	DBPath               string `toml:"path" json:"path"`
 	CompressionBlockSize uint32 `toml:"block_size" json:"block_size"`
+	MinIdxInterval       uint32 `toml:"min_index_interval"`
+	MaxIdxInterval       uint32 `toml:"max_index_interval"`
 
 	BloomFilter bloom.CfgBloomFilter `toml:"bloom" json:"bloom"`
 }
 
 type IndexSummary[P core.PartKeyTypes] struct {
-	Id             int16
-	MinKey         P
-	MinBlockOffset uint32
-	MaxKey         P
-	MaxBlockOffset uint32
-
-	// PartKeyTypeInfo *core.TypeInfo
+	Id              int16
+	PartKey         P
+	IndexFileOffset uint32
 }
 
 func New[P core.PartKeyTypes](cfg *CfgSSTable, tableName string, pkt core.TypeInfo, id int) *SSTable[P] {
@@ -81,7 +81,7 @@ func (ss *SSTable[P]) Get(partKey P) *core.ItemQuery[P] {
 		return nil
 	}
 
-	// @TODO: load summary from dsic if nil!
+	// @TODO: binary search summary file
 
 	var idxRange *IndexSummary[P]
 	for _, sum := range ss.summaries {

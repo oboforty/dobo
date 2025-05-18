@@ -24,13 +24,16 @@ type CfgTable struct {
 }
 
 var tableDefaults = CfgTable{
-	// KeyType
+	KeyType: "int64",
 	MemTable: memtable.CfgMemtable{
 		Type:        memtable.MEMTYPE_REDBLACK,
 		MaxByteSize: 65536,
 	},
 	SSTable: sstable.CfgSSTable{
 		CompressionBlockSize: 16384,
+		MinIdxInterval:       128,
+		MaxIdxInterval:       4096,
+
 		BloomFilter: bloom.CfgBloomFilter{
 			FalsePositiveRate: 0.1,
 		},
@@ -38,29 +41,34 @@ var tableDefaults = CfgTable{
 }
 
 func (cfg *CfgTable) ApplyDefaults() {
-	// @TODO: add a defaults.toml at top lvl?
-	//				ApplyDefaults(defaults *CfgTable, ...) {
-
+	// Global Table Defaults
 	if cfg.KeyType == "" {
-		cfg.KeyType = "int64"
+		cfg.KeyType = tableDefaults.KeyType
 	}
 
+	// MemTable Defaults
 	if cfg.MemTable.Type == "" {
 		cfg.MemTable.Type = tableDefaults.MemTable.Type
 	}
-
 	if cfg.MemTable.MaxByteSize == 0 {
 		cfg.MemTable.MaxByteSize = tableDefaults.MemTable.MaxByteSize
 	}
 
+	// SSTable defaults
 	if cfg.SSTable.CompressionBlockSize == 0 {
 		cfg.SSTable.CompressionBlockSize = tableDefaults.SSTable.CompressionBlockSize
 	}
+	if cfg.SSTable.MinIdxInterval == 0 {
+		cfg.SSTable.MinIdxInterval = tableDefaults.SSTable.MinIdxInterval
+	}
+	if cfg.SSTable.MaxIdxInterval == 0 {
+		cfg.SSTable.MaxIdxInterval = tableDefaults.SSTable.MaxIdxInterval
+	}
 
+	// BF defaults
 	if cfg.SSTable.BloomFilter.FalsePositiveRate == 0 {
 		cfg.SSTable.BloomFilter.FalsePositiveRate = tableDefaults.SSTable.BloomFilter.FalsePositiveRate
 	}
-
 }
 
 func (cfg *CfgTable) WriteToDisc() error {

@@ -63,7 +63,7 @@ func (ss *SSTable[P]) WriteToDisc(table IterableTable[P]) error {
 		currentKey = node.PartKey
 
 		if sum_file.Empty() {
-			sum_file.StartRegion(len(ss.summaries), currentKey, idxBlockOffset)
+			sum_file.StartRegion(len(ss.summaries), keyLength, currentKey, idxBlockOffset)
 		}
 
 		// Write Index File (3 int32 + the dynamic sized key itself)
