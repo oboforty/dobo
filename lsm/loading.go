@@ -33,6 +33,7 @@ var tableDefaults = CfgTable{
 		CompressionBlockSize: 16384,
 		MinIdxInterval:       128,
 		MaxIdxInterval:       4096,
+		MaxSumSize:           5242880,
 
 		BloomFilter: bloom.CfgBloomFilter{
 			FalsePositiveRate: 0.1,
@@ -142,7 +143,6 @@ func (t *LSMTreeTable[P]) loadSSTables() error {
 		)
 		log.Printf("[SST] loading table %s from %s", t.cfg.Name, sst.FileBase())
 		sst.LoadFromDisc()
-		sst.Statistics["lvl"] = 1
 
 		t.SSTables = append(t.SSTables, sst)
 	}

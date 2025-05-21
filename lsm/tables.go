@@ -31,7 +31,7 @@ type MemTable[P core.PartKeyTypes] interface {
 	Upsert(*core.Item[P])
 	Delete(P) bool
 
-	ByteSize() uint32
+	ByteSize() uint64
 	IsFull() bool
 	Clear()
 }
@@ -112,9 +112,7 @@ func (t *LSMTreeTable[P]) createMemtable() {
 }
 
 func (t *LSMTreeTable[P]) FlushMemToDisc() error {
-	// @TODO: Log
-
-	log.Println("[SST] Flushing MemTable, size: ", t.MemTable.ByteSize())
+	log.Println("[SST] Flushing mem to disc, size: ", t.MemTable.ByteSize(), "avg key size: ", t.MemTable.AvgKeySize())
 
 	memtOld := t.MemTable
 	t.createMemtable()

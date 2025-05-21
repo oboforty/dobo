@@ -19,8 +19,8 @@ import (
 )
 
 type TestIterable struct {
-	NItems       uint
-	ItemSize     uint
+	NItems       uint32
+	ItemSize     uint32
 	Randomize    bool
 	FoundSSLevel int8
 
@@ -66,8 +66,16 @@ func (t *TestIterable) ItemIterator() iter.Seq[*core.ItemQuery[int32]] {
 	}
 }
 
-func (t *TestIterable) Size() uint32 {
+func (t *TestIterable) Len() uint32 {
 	return uint32(t.NItems)
+}
+
+func (t *TestIterable) AvgItemSize() uint32 {
+	return t.ItemSize
+}
+
+func (t *TestIterable) AvgKeySize() uint32 {
+	return 4
 }
 
 func CapturePrint(t *testing.T) {
@@ -87,7 +95,7 @@ func CapturePrint(t *testing.T) {
 	})
 }
 
-func SetupTable(t *testing.T, memsize uint32, blocksize uint32, cleanup bool) *lsm.CfgTable {
+func SetupTable(t *testing.T, memsize uint64, blocksize uint32, cleanup bool) *lsm.CfgTable {
 	// Create a relative folder
 	cwd, _ := os.Getwd()
 	dbPath := filepath.Join(cwd, "..", "tmp")
@@ -133,6 +141,9 @@ func SetupTable(t *testing.T, memsize uint32, blocksize uint32, cleanup bool) *l
 		SSTable: sstable.CfgSSTable{
 			DBPath:               dbPath,
 			CompressionBlockSize: blocksize,
+			MinIdxInterval:       128,
+			MaxIdxInterval:       128,
+			MaxSumSize:           5242880,
 			BloomFilter: bloom.CfgBloomFilter{
 				FalsePositiveRate: 0.1,
 			},

@@ -71,7 +71,7 @@ func TestFlushMemTable(t *testing.T) {
 	const N_ITEMS int32 = 10
 	unitSize := memtable.RB_NODE_PTRS_SIZE + 4 + 8
 	cfg := SetupTable(t,
-		unitSize*uint32(N_ITEMS), // mem size
+		unitSize*uint64(N_ITEMS), // mem size
 		64*1024,                  // compression block size
 		true,
 	)
@@ -91,7 +91,7 @@ func TestFlushMemTable(t *testing.T) {
 
 	// Assert - At this point memtable should be full
 	if !table.MemTable.IsFull() {
-		expectedSize := unitSize * uint32(N_ITEMS)
+		expectedSize := unitSize * uint64(N_ITEMS)
 
 		t.Error("Memtable was expected to be full after: ", expectedSize)
 		t.FailNow()
@@ -108,13 +108,7 @@ func TestFlushMemTable(t *testing.T) {
 
 	// Assert - memtable is cleared
 	if table.MemTable.ByteSize() != 0 {
-		t.Error("MemTable should have be empty!")
-		t.FailNow()
-	}
-
-	// Assert - SSTable is created
-	if len(table.SSTables) != 1 || table.SSTables[0].GetGenerationId() != table.CurrentGenerationId() {
-		t.Error("SSTable GenId mismatch")
+		t.Error("MemTable should haven be empty!")
 		t.FailNow()
 	}
 
@@ -131,16 +125,22 @@ func TestFlushMemTable(t *testing.T) {
 		t.Error("SSTable GET deleted fail")
 		t.FailNow()
 	}
+
+	// Assert - SSTable is created
+	if len(table.SSTables) != 1 || table.SSTables[0].GetGenerationId() != table.CurrentGenerationId() {
+		t.Error("SSTable GenId mismatch")
+		t.FailNow()
+	}
 }
 
 // Writes a bunch of items (10 blocks) to disc
 // Then tests if an item can be retrieved
 func TestWriteReadItemSSTable(t *testing.T) {
 	// Arrange: Memtable shou ld be flushed after 10 items
-	const VAL_SIZE uint = 10
+	const VAL_SIZE uint32 = 10
 	const BLOCK_SIZE = 64 * 1024
-	const n_items = 10 * (BLOCK_SIZE / VAL_SIZE)
-	cfg := SetupTable(t, 0, BLOCK_SIZE, true)
+	const n_items = 10 * (uint32(BLOCK_SIZE) / VAL_SIZE)
+	cfg := SetupTable(t, 0, BLOCK_SIZE, false)
 	pkt, _ := core.GetTypeInfo[int32]()
 
 	sstable := sstable.New[int32](
@@ -179,11 +179,21 @@ func TestWriteReadItemSSTable(t *testing.T) {
 		t.FailNow()
 	}
 
-	if expectedItem.PartKey != actualItem.PartKey || !bytes.Equal(expectedItem.Value, actualItem.Value) {
-		t.Error("Malformed item found")
+	if !bytes.Equal(expectedItem.Value, actualItem.Value) {
+		t.Log("Expected value: ", expectedItem.Value)
+		t.Log("Actual value:   ", actualItem.Value)
+
+		t.Errorf("Malformed item found")
 		t.FailNow()
 	}
 
+	if expectedItem.PartKey != actualItem.PartKey {
+		t.Log("Expected key: ", expectedItem.PartKey)
+		t.Log("Actual key:   ", actualItem.PartKey)
+
+		t.Errorf("Malformed item found")
+		t.FailNow()
+	}
 	// @TODO: assert dat & idx file content?
 }
 

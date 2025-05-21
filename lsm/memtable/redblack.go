@@ -9,7 +9,7 @@ import (
 )
 
 // Calculate the size of a RB Tree Node, without the Key & Value sizes
-const RB_NODE_PTRS_SIZE = uint32(unsafe.Sizeof(rbt.Node[int8, int8]{}) - (unsafe.Sizeof(int8(0)) * 2))
+const RB_NODE_PTRS_SIZE = uint64(unsafe.Sizeof(rbt.Node[int8, int8]{}) - (unsafe.Sizeof(int8(0)) * 2))
 
 // MemTable implementing Red-Black Balanced Trees
 type RBMemT[P core.PartKeyTypes] struct {
@@ -62,13 +62,13 @@ func (rb *RBMemT[P]) Upsert(item *core.Item[P]) {
 	// Calculate memory allocation of item
 	// Partition key
 	if rb.partKeyTypeInfo.IsDynamicSize {
-		rb.byteSize += core.GetSize(item.PartKey)
+		rb.totalKeySize += uint64(core.GetSize(item.PartKey))
 	} else {
-		rb.byteSize += rb.partKeyTypeInfo.StaticSize
+		rb.totalKeySize += uint64(rb.partKeyTypeInfo.StaticSize)
 	}
 
 	// Value & Node structure size
-	rb.byteSize += uint32(len(item.Value)) + RB_NODE_PTRS_SIZE
+	rb.totalValueSize += uint64(len(item.Value)) + RB_NODE_PTRS_SIZE
 }
 
 // Adds a tombstone entry to RB Tree. Returns true if item has been deleted in memory
@@ -111,11 +111,26 @@ func (rb *RBMemT[P]) ItemIterator() iter.Seq[*core.ItemQuery[P]] {
 	}
 }
 
-func (rb *RBMemT[P]) Size() uint32 {
+func (rb *RBMemT[P]) Len() uint32 {
 	return uint32(rb.tree.Size())
+}
+
+func (rb *RBMemT[P]) AvgItemSize() uint32 {
+	return uint32(rb.ByteSize() / uint64(rb.tree.Size()))
+}
+
+func (rb *RBMemT[P]) AvgKeySize() uint32 {
+	records := rb.tree.Size()
+
+	if rb.partKeyTypeInfo.IsDynamicSize {
+		return uint32(rb.totalKeySize / uint64(records))
+	} else {
+		return uint32(rb.totalKeySize / uint64(rb.partKeyTypeInfo.StaticSize))
+	}
 }
 
 func (rb *RBMemT[P]) Clear() {
 	rb.tree.Clear()
-	rb.byteSize = 0
+	rb.totalValueSize = 0
+	rb.totalKeySize = 0
 }

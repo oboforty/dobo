@@ -14,20 +14,21 @@ const (
 
 type CfgMemtable struct {
 	Type        CfgMemtableType `toml:"type" json:"type"`
-	MaxByteSize uint32          `toml:"max_size" json:"max_size"`
+	MaxByteSize uint64          `toml:"max_size" json:"max_size"`
 }
 
 type MemT struct {
 	partKeyTypeInfo *core.TypeInfo
 
-	maxSize  uint32
-	byteSize uint32
+	maxSize        uint64
+	totalValueSize uint64
+	totalKeySize   uint64
 }
 
-func (m *MemT) ByteSize() uint32 {
-	return m.byteSize
+func (m *MemT) ByteSize() uint64 {
+	return m.totalKeySize + m.totalValueSize
 }
 
 func (m *MemT) IsFull() bool {
-	return m.maxSize <= m.byteSize
+	return m.ByteSize() >= m.maxSize
 }
