@@ -24,39 +24,27 @@ type ValueSearchHit struct {
 
 // Fetches the compressed block offset & the offset within the decompressed block for the data file
 // using the summary index & 2nd order index files
-func SearchSparseIndex[P core.PartKeyTypes](searchKey P, sparseIndex []SparseIndex[P], filebase string, isFirstOrder bool) (SparseIndexHit[P], error) {
-	var siHit SparseIndexHit[P]
-	var err error
+// func SearchSparseIndex[P core.PartKeyTypes](searchKey P, sparseIndex []SparseIndex[P], filebase string, isFirstOrder bool) (SparseIndexHit[P], error) {
+// 	var err error
 
-	// Binary search first order sparse index
-	// @TODO: implement bin search
-	for _, siRange := range sparseIndex {
-		if core.UberComparator(siRange.StartPartKey, searchKey) != 1 {
-			// this range is OK to find the searched key,
-			siHit = &siRange
-		} else {
-			// partKey is bigger than this summary's range.
-			// the previous start key lies the closest to the key we're looking for
-			break
-		}
-	}
+// 	siHit := BinSearchSparseIndexMemory(searchKey, sparseIndex)
 
-	if siHit == nil {
-		return nil, nil
-	}
+// 	if siHit == nil {
+// 		return nil, nil
+// 	}
 
-	if isFirstOrder {
-		// the binary search only gave the block offset within the 2nd order (.idx) index file
-		// Now we search thas file to get the .dat file's block offsets
-		siHit, err = SearchIndexFile(filebase+".idx", searchKey, siHit.GetBlockOffset())
+// 	if isFirstOrder {
+// 		// the binary search only gave the block offset within the 2nd order (.idx) index file
+// 		// Now we search thas file to get the .dat file's block offsets
+// 		siHit, err = SearchIndexFile(filebase+".idx", searchKey, siHit.GetBlockOffset())
 
-		if err != nil {
-			return nil, err
-		}
-	}
+// 		if err != nil {
+// 			return nil, err
+// 		}
+// 	}
 
-	return siHit, nil
-}
+// 	return siHit, nil
+// }
 
 func SearchIndexFile[P core.PartKeyTypes](filename string, searchKey P, startBlockOffset uint32) (SparseIndexHit[P], error) {
 	file, err := os.Open(filename)
@@ -172,4 +160,46 @@ func SearchDataFileGzipBlock[P core.PartKeyTypes](
 			return &ValueSearchHit{Value: value}, nil
 		}
 	}
+}
+
+// Linear search first order sparse index
+func LinSearchSparseIndexMemory[P core.PartKeyTypes](searchKey P, sparseIndex []SparseIndex[P]) SparseIndexHit[P] {
+	var siHit SparseIndexHit[P]
+
+	for _, siRange := range sparseIndex {
+		if core.UberComparator(siRange.StartPartKey, searchKey) != 1 {
+			// this range is OK to find the searched key,
+			siHit = &siRange
+		} else {
+			// partKey is bigger than this summary's range.
+			// the previous start key lies the closest to the key we're looking for
+			break
+		}
+	}
+
+	return siHit
+}
+
+// Binary search first order sparse index
+func BinSearchSparseIndexMemory[P core.PartKeyTypes](searchKey P, sparseIndex []SparseIndex[P]) SparseIndexHit[P] {
+	var siHit SparseIndexHit[P]
+
+	// Binary search first order sparse index
+	// @TODO: implement bin search
+	low, high := 0, len(sparseIndex)-1
+	for low <= high {
+		mid := (low + high) / 2
+		comp := core.UberComparator(sparseIndex[mid].StartPartKey, searchKey)
+
+		if comp <= 0 {
+			// mid is a candidate, but there might be a better (closer) one to the right
+			siHit = &sparseIndex[mid]
+			low = mid + 1
+		} else {
+			// current StartPartKey is greater than searchKey, go left
+			high = mid - 1
+		}
+	}
+
+	return siHit
 }

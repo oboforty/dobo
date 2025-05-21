@@ -73,8 +73,8 @@ func (ss *SSTable[P]) FileBase() string {
 	return filepath.Join(ss.tablePath, "g"+strconv.Itoa(ss.GenerationId))
 }
 
-func (ss *SSTable[P]) Get(partKey P) *core.ItemQuery[P] {
-	ok, err := ss.bloom.Test(partKey)
+func (ss *SSTable[P]) Get(searchKey P) *core.ItemQuery[P] {
+	ok, err := ss.bloom.Test(searchKey)
 
 	if err != nil {
 		panic(err)
@@ -85,33 +85,50 @@ func (ss *SSTable[P]) Get(partKey P) *core.ItemQuery[P] {
 		return nil
 	}
 
-	siHit, err := SearchSparseIndex[P](partKey, ss.sparseIndex, ss.FileBase(), ss.Metadata["sparse_type"] == "sum")
+	siHit := BinSearchSparseIndexMemory(searchKey, ss.sparseIndex)
+
+	if siHit == nil {
+		return nil
+	}
+
+	if ss.Metadata["sparse_type"] == "sum" {
+		// the binary search only gave the block offset within the 2nd order (.idx) index file
+		// Now we search thas file to get the .dat file's block offsets
+		siHit, err = SearchIndexFile(ss.FileBase()+".idx", searchKey, siHit.GetBlockOffset())
+
+		if err != nil {
+			// @TODO: log errors?
+			panic(err)
+			return nil
+		}
+	}
 
 	if err != nil {
+		// @TODO: log errors?
 		panic(err)
-		// @TODO: log?
 	}
 
 	if siHit == nil {
 		return nil
 	}
 
-	vhit, err := SearchDataFileGzipBlock(
+	datHit, err := SearchDataFileGzipBlock(
 		ss.FileBase()+".dat",
 		int32(siHit.GetBlockOffset()),
 		int32(siHit.GetInterBlockOffset()),
-		partKey,
+		searchKey,
 	)
 	if err != nil {
+		// @TODO: log errors?
 		panic(err)
 	}
 
-	if vhit == nil {
+	if datHit == nil {
 		// @TODO: Panic?
 		return nil
-	} else if vhit.Value == nil {
+	} else if datHit.Value == nil {
 		return &core.ItemQuery[P]{
-			PartKey:    partKey,
+			PartKey:    searchKey,
 			Value:      nil,
 			FoundIn:    core.FOUND_AT_SS,
 			FoundSSIdx: uint32(ss.GenerationId),
@@ -120,20 +137,11 @@ func (ss *SSTable[P]) Get(partKey P) *core.ItemQuery[P] {
 	}
 
 	return &core.ItemQuery[P]{
-		PartKey: partKey,
-		Value:   vhit.Value,
+		PartKey: searchKey,
+		Value:   datHit.Value,
 		FoundIn: core.FOUND_AT_SS,
 	}
 }
-
-// func (ss *SSTable[P]) Upsert(partKey interface{}, value interface{}) {
-// 	rb.tree.Put(partKey, value)
-// }
-
-// @TODO: Tombstone entry!
-// func (ss *SSTable[P]) Delete(partKey interface{}) {
-// 	rb.tree.Remove(partKey)
-// }
 
 func (ss *SSTable[P]) LoadFromDisc() error {
 	// load bloom filter
