@@ -14,13 +14,15 @@ import (
 
 type IterableTable[P core.PartKeyTypes] interface {
 	Len() uint32
-	AvgKeySize() uint32
+	TotalKeySize() uint64
+	TotalValueSize() uint64
 	ItemIterator() iter.Seq[*core.ItemQuery[P]]
 }
 
 func (ss *SSTable[P]) WriteToDisc(table IterableTable[P]) error {
 	core.EnsurePath(filepath.Dir(ss.FileBase()))
 
+	println("@@ --> ", table.Len())
 	// SSTable.New has created a bloomtree, but create it again, now with an estimate for items!
 	ss.bloom = bloom.New(bloom.CfgBloomFilter{
 		MaxItems:          table.Len(),
@@ -40,12 +42,23 @@ func (ss *SSTable[P]) WriteToDisc(table IterableTable[P]) error {
 	}
 	defer idx_file.Close()
 
-	// summary really should be empty always at this step
-	ss.sparseIndex = make([]SparseIndex[P], 0)
+	// Table Statistics
+	var avgKeySize uint32
+	if ss.partKeyTypeInfo.IsDynamicSize {
+		avgKeySize = uint32(table.TotalKeySize() / uint64(table.Len()))
+	} else {
+		avgKeySize = ss.partKeyTypeInfo.StaticSize
+	}
+
+	ss.Statistics["records"] = int(table.Len())
+	ss.Statistics["total_data_size"] = int(table.TotalValueSize())
+	ss.Statistics["total_key_size"] = int(table.TotalKeySize())
+	ss.Statistics["avg_key_size"] = int(avgKeySize)
 
 	// Summary file info
 	// index file entries / summary file entries (needed to abide the max size)
-	summary_entries := ss.MaxSumSize / table.AvgKeySize()
+	ss.sparseIndex = make([]SparseIndex[P], 0)
+	summary_entries := ss.MaxSumSize / avgKeySize
 	summaryInterval := (table.Len() / ss.MinIdxInterval) / summary_entries
 	if summaryInterval > 2 {
 		ss.Metadata["sparse_type"] = "sum"
@@ -95,7 +108,7 @@ func (ss *SSTable[P]) WriteToDisc(table IterableTable[P]) error {
 
 			if summaryInterval > 2 {
 				wof, idxOffset := idx_file.GetOffsets()
-				println("@@ TODO @@ ", wof, idxOffset)
+				println("### TODO  ", wof, idxOffset)
 
 				// points to .idx file
 				idx.BlockOffset = idxOffset

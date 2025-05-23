@@ -11,7 +11,11 @@ import (
 type BloomFilter interface {
 	Add(val interface{}) error
 	Test(val interface{}) (bool, error)
+	Merge(val interface{}) error
+
 	FalsePositiveRate() float64
+	MaxItems() uint32
+
 	WriteToDisc(string) error
 	LoadFromDisc(string) error
 }
@@ -99,7 +103,7 @@ func (ss *SSTable[P]) Get(searchKey P) *core.ItemQuery[P] {
 		if err != nil {
 			// @TODO: log errors?
 			panic(err)
-			return nil
+			// return nil
 		}
 	}
 

@@ -1,3 +1,7 @@
 {
-  "go.testFlags": ["-v"]
+  "go.testFlags": [
+    "-v"
+  ],
+  "go.buildTags": "",
+  "chat.mcp.discovery.enabled": true
   }

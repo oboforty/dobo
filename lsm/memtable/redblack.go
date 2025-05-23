@@ -21,8 +21,9 @@ type RBMemT[P core.PartKeyTypes] struct {
 func NewRedBlack[P core.PartKeyTypes](cfg *CfgMemtable, partKeyTypeInfo *core.TypeInfo) *RBMemT[P] {
 	rb := &RBMemT[P]{
 		MemT: MemT{
-			partKeyTypeInfo: partKeyTypeInfo,
-			maxSize:         cfg.MaxByteSize,
+			partKeyTypeInfo:     partKeyTypeInfo,
+			maxSize:             cfg.MaxByteSize,
+			recordAuxiliarySize: RB_NODE_PTRS_SIZE,
 		},
 	}
 	rb.tree = rbt.NewWith[P, []byte](core.UberComparator)
@@ -68,7 +69,7 @@ func (rb *RBMemT[P]) Upsert(item *core.Item[P]) {
 	}
 
 	// Value & Node structure size
-	rb.totalValueSize += uint64(len(item.Value)) + RB_NODE_PTRS_SIZE
+	rb.totalValueSize += uint64(len(item.Value)) + rb.recordAuxiliarySize
 }
 
 // Adds a tombstone entry to RB Tree. Returns true if item has been deleted in memory
@@ -113,20 +114,6 @@ func (rb *RBMemT[P]) ItemIterator() iter.Seq[*core.ItemQuery[P]] {
 
 func (rb *RBMemT[P]) Len() uint32 {
 	return uint32(rb.tree.Size())
-}
-
-func (rb *RBMemT[P]) AvgItemSize() uint32 {
-	return uint32(rb.ByteSize() / uint64(rb.tree.Size()))
-}
-
-func (rb *RBMemT[P]) AvgKeySize() uint32 {
-	records := rb.tree.Size()
-
-	if rb.partKeyTypeInfo.IsDynamicSize {
-		return uint32(rb.totalKeySize / uint64(records))
-	} else {
-		return uint32(rb.totalKeySize / uint64(rb.partKeyTypeInfo.StaticSize))
-	}
 }
 
 func (rb *RBMemT[P]) Clear() {

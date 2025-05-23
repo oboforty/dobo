@@ -3,6 +3,7 @@ package bloom
 import (
 	"bytes"
 	"encoding/binary"
+	"fmt"
 	"io"
 	"log/slog"
 	"os"
@@ -22,23 +23,23 @@ type CfgBloomFilter struct {
 
 type bloomFilter struct {
 	bloom             *bloom.BloomFilter
-	MaxItems          uint
+	maxItems          uint32
 	falsePositiveRate float64
 }
 
 func New(cfg CfgBloomFilter) *bloomFilter {
 	bf := &bloomFilter{
-		MaxItems:          uint(cfg.MaxItems),
+		maxItems:          cfg.MaxItems,
 		falsePositiveRate: cfg.FalsePositiveRate,
 	}
 
 	if cfg.MaxItems > 0 {
 		if cfg.Bits > 0 || cfg.HashFunctions > 0 {
-			slog.Warn("[Bloom] redundant config: either define MaxItems+FalsePositiveRates OR Bits+HashFunctions in config!")
+			slog.Warn("[Bloom] redundant config: either define maxItems+FalsePositiveRates OR Bits+HashFunctions in config!")
 		}
 
 		// convenience params
-		bf.bloom = bloom.NewWithEstimates(bf.MaxItems, bf.falsePositiveRate)
+		bf.bloom = bloom.NewWithEstimates(uint(bf.maxItems), bf.falsePositiveRate)
 	} else if cfg.Bits > 0 {
 		bf.bloom = bloom.New(uint(cfg.Bits), uint(cfg.HashFunctions))
 	} else {
@@ -78,6 +79,19 @@ func (b *bloomFilter) Add(val interface{}) error {
 
 func (b *bloomFilter) FalsePositiveRate() float64 {
 	return b.falsePositiveRate
+}
+
+func (b *bloomFilter) MaxItems() uint32 {
+	return uint32(b.maxItems)
+}
+
+func (b1 *bloomFilter) Merge(b2 interface{}) error {
+	bf2, ok := b2.(*bloomFilter)
+	if !ok {
+		return fmt.Errorf("invalid BF type for merge")
+	}
+
+	return b1.bloom.Merge(bf2.bloom)
 }
 
 func (b *bloomFilter) WriteToDisc(filename string) error {

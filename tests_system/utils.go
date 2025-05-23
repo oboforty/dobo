@@ -70,12 +70,12 @@ func (t *TestIterable) Len() uint32 {
 	return uint32(t.NItems)
 }
 
-func (t *TestIterable) AvgItemSize() uint32 {
-	return t.ItemSize
+func (t *TestIterable) TotalKeySize() uint64 {
+	return uint64(t.ItemSize * t.Len())
 }
 
-func (t *TestIterable) AvgKeySize() uint32 {
-	return 4
+func (t *TestIterable) TotalValueSize() uint64 {
+	return uint64(4 * t.Len())
 }
 
 func CapturePrint(t *testing.T) {

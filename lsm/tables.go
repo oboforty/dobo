@@ -112,7 +112,7 @@ func (t *LSMTreeTable[P]) createMemtable() {
 }
 
 func (t *LSMTreeTable[P]) FlushMemToDisc() error {
-	log.Println("[SST] Flushing mem to disc, size: ", t.MemTable.ByteSize(), "avg key size: ", t.MemTable.AvgKeySize())
+	log.Println("[SST] Flushing mem to disc, size: ", t.MemTable.ByteSize())
 
 	memtOld := t.MemTable
 	t.createMemtable()
@@ -128,6 +128,8 @@ func (t *LSMTreeTable[P]) FlushMemToDisc() error {
 		t.CurrentGenerationId()+1,
 	)
 	t.SSTables = append(t.SSTables, ss)
+
+	ss.Statistics["flushed_at_mem_size"] = int(memtOld.ByteSize())
 
 	return ss.WriteToDisc(memtOld)
 }
