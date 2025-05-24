@@ -16,13 +16,12 @@ type IterableTable[P core.PartKeyTypes] interface {
 	Len() uint32
 	TotalKeySize() uint64
 	TotalValueSize() uint64
-	ItemIterator() iter.Seq[*core.ItemQuery[P]]
+	ItemIterator() iter.Seq[*core.Item[P]]
 }
 
 func (ss *SSTable[P]) WriteToDisc(table IterableTable[P]) error {
 	core.EnsurePath(filepath.Dir(ss.FileBase()))
 
-	println("@@ --> ", table.Len())
 	// SSTable.New has created a bloomtree, but create it again, now with an estimate for items!
 	ss.bloom = bloom.New(bloom.CfgBloomFilter{
 		MaxItems:          table.Len(),
@@ -130,6 +129,7 @@ func (ss *SSTable[P]) WriteToDisc(table IterableTable[P]) error {
 		if node.Value != nil {
 			buf.Write(node.Value)
 		}
+		println("@#@", node.PartKey, string(buf.Bytes()))
 		_, err = dat_file.Write(buf.Bytes())
 		if err != nil {
 			// @TODO: handle remove SSTables & restore from WAL

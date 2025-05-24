@@ -89,20 +89,17 @@ func (rb *RBMemT[P]) Delete(partKey P) bool {
 	}
 }
 
-func (rb *RBMemT[P]) ItemIterator() iter.Seq[*core.ItemQuery[P]] {
-	return func(yield func(*core.ItemQuery[P]) bool) {
+func (rb *RBMemT[P]) ItemIterator() iter.Seq[*core.Item[P]] {
+	return func(yield func(*core.Item[P]) bool) {
 
 		it := rb.tree.Iterator()
 
 		for i := 0; it.Next(); i++ {
 			node := it.Node()
 
-			item := &core.ItemQuery[P]{
+			item := &core.Item[P]{
 				PartKey: node.Key,
 				Value:   node.Value,
-
-				FoundIn:      core.FOUND_AT_MEM,
-				FoundSSLevel: -1,
 			}
 
 			if !yield(item) {

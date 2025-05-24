@@ -24,10 +24,10 @@ type TestIterable struct {
 	Randomize    bool
 	FoundSSLevel int8
 
-	RndItem *core.ItemQuery[int32]
+	RndItem *core.Item[int32]
 }
 
-func (t *TestIterable) ItemIterator() iter.Seq[*core.ItemQuery[int32]] {
+func (t *TestIterable) ItemIterator() iter.Seq[*core.Item[int32]] {
 	var rnd *rand.Rand
 	if t.Randomize {
 		rnd = rand.New(rand.NewPCG(uint64(time.Now().UnixNano()), uint64(time.Now().UnixNano())))
@@ -43,15 +43,12 @@ func (t *TestIterable) ItemIterator() iter.Seq[*core.ItemQuery[int32]] {
 		return keys[i] < keys[j]
 	})
 
-	return func(yield func(*core.ItemQuery[int32]) bool) {
+	return func(yield func(*core.Item[int32]) bool) {
 
 		for i := range t.NItems {
-			item := &core.ItemQuery[int32]{
+			item := &core.Item[int32]{
 				PartKey: keys[i],
 				Value:   RandAsciiByte(int(t.ItemSize)),
-
-				FoundIn:      core.FOUND_AT_SS,
-				FoundSSLevel: t.FoundSSLevel,
 			}
 
 			// pick out a random item for later testing

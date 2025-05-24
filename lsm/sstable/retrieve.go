@@ -22,30 +22,6 @@ type ValueSearchHit struct {
 	// @TODO: add more information?
 }
 
-// Fetches the compressed block offset & the offset within the decompressed block for the data file
-// using the summary index & 2nd order index files
-// func SearchSparseIndex[P core.PartKeyTypes](searchKey P, sparseIndex []SparseIndex[P], filebase string, isFirstOrder bool) (SparseIndexHit[P], error) {
-// 	var err error
-
-// 	siHit := BinSearchSparseIndexMemory(searchKey, sparseIndex)
-
-// 	if siHit == nil {
-// 		return nil, nil
-// 	}
-
-// 	if isFirstOrder {
-// 		// the binary search only gave the block offset within the 2nd order (.idx) index file
-// 		// Now we search thas file to get the .dat file's block offsets
-// 		siHit, err = SearchIndexFile(filebase+".idx", searchKey, siHit.GetBlockOffset())
-
-// 		if err != nil {
-// 			return nil, err
-// 		}
-// 	}
-
-// 	return siHit, nil
-// }
-
 func SearchIndexFile[P core.PartKeyTypes](filename string, searchKey P, startBlockOffset uint32) (SparseIndexHit[P], error) {
 	file, err := os.Open(filename)
 	if err != nil {
@@ -202,4 +178,87 @@ func BinSearchSparseIndexMemory[P core.PartKeyTypes](searchKey P, sparseIndex []
 	}
 
 	return siHit
+}
+
+// DataFileGzipBlockIterator represents an iterator over a gzipped data file containing blocks
+type DataFileGzipBlockIterator[P core.PartKeyTypes] struct {
+	file        *os.File
+	compReader  *gzip.Reader
+	blockLength uint32
+	done        bool
+}
+
+func NewDataFileGzipBlockIterator[P core.PartKeyTypes](filename string) (*DataFileGzipBlockIterator[P], error) {
+	file, err := os.Open(filename)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open file: %w", err)
+	}
+
+	return &DataFileGzipBlockIterator[P]{
+		file: file,
+	}, nil
+}
+
+// Next reads the next key-value pair from the current block
+// Returns false when there are no more entries to read
+func (it *DataFileGzipBlockIterator[P]) Next() (*core.Item[P], error) {
+	if it.done {
+		return nil, io.EOF
+	}
+
+	// read the next gzip block
+	if it.compReader == nil {
+		if err := it.readNextBlock(); err != nil {
+			if err == io.EOF {
+				it.done = true
+				return nil, err
+			}
+			return nil, err
+		}
+	}
+
+	var partKey P
+	if err := ioutils.ReadDynamicValue[uint32](it.compReader, &partKey); err != nil {
+		if err == io.EOF {
+			// End of current block, try next block
+			it.compReader.Close()
+			it.compReader = nil
+			return it.Next()
+		}
+		return nil, err
+	}
+
+	value, err := ioutils.ReadDynamic[uint32](it.compReader)
+	if err != nil {
+		println("@@ baj van time val 4 ", err.Error(), partKey)
+		return nil, err
+	}
+
+	return &core.Item[P]{
+		PartKey: partKey,
+		Value:   value,
+	}, nil
+}
+
+// readNextBlock reads the next compressed block from the file
+func (it *DataFileGzipBlockIterator[P]) readNextBlock() error {
+	// block length
+	err := binary.Read(it.file, binary.BigEndian, &it.blockLength)
+	if err != nil {
+		return err
+	}
+
+	it.compReader, err = gzip.NewReader(io.LimitReader(it.file, int64(it.blockLength)))
+	if err != nil {
+		return fmt.Errorf("failed to create gzip reader: %w", err)
+	}
+
+	return nil
+}
+
+func (it *DataFileGzipBlockIterator[P]) Close() error {
+	if it.compReader != nil {
+		it.compReader.Close()
+	}
+	return it.file.Close()
 }

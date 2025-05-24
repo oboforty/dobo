@@ -23,7 +23,14 @@ func TestTablesCompaction(t *testing.T) {
 		&cfg.SSTable, cfg.Name, *pkt, 1,
 	)
 
-	iter := TestIterable{
+	iter1 := TestIterable{
+		Randomize:    true,
+		NItems:       n_items,
+		ItemSize:     VAL_SIZE,
+		FoundSSLevel: 0,
+	}
+
+	iter2 := TestIterable{
 		Randomize:    true,
 		NItems:       n_items,
 		ItemSize:     VAL_SIZE,
@@ -31,18 +38,20 @@ func TestTablesCompaction(t *testing.T) {
 	}
 
 	// Arrange - flush to disc
-	if err := sstable1.WriteToDisc(&iter); err != nil {
+	println("1 -- ##############")
+	if err := sstable1.WriteToDisc(&iter1); err != nil {
 		t.Error(err)
 		t.FailNow()
 	}
-	if err := sstable2.WriteToDisc(&iter); err != nil {
+	println("2 -- ##############")
+	if err := sstable2.WriteToDisc(&iter2); err != nil {
 		t.Error(err)
 		t.FailNow()
 	}
 
 	println("###################################################\n")
 	// Act - compact them, should be merge sort across all data structures
-	sstable3, err := sstable.CompactTables(sstable1, sstable2)
+	sstable3, err := sstable.CompactTables(sstable1, sstable2, 2)
 	if err != nil {
 		t.Error(err)
 		t.FailNow()
