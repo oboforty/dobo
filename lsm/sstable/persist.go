@@ -129,7 +129,6 @@ func (ss *SSTable[P]) WriteToDisc(table IterableTable[P]) error {
 		if node.Value != nil {
 			buf.Write(node.Value)
 		}
-		println("@#@", node.PartKey, string(buf.Bytes()))
 		_, err = dat_file.Write(buf.Bytes())
 		if err != nil {
 			// @TODO: handle remove SSTables & restore from WAL

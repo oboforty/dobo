@@ -33,38 +33,26 @@ func (c *CompactionIterable[P]) ItemIterator() iter.Seq[*core.Item[P]] {
 		item2, err2 := c.file2.Next()
 
 		for err1 == nil || err2 == nil {
-			var val1, val2 P
 
-			if item1 != nil {
-				val1 = item1.PartKey
-			}
-			if item2 != nil {
-				val2 = item2.PartKey
-			}
-			print("@ ", val1, " ", val2)
 			if err1 != nil {
 				// Only f2 has remaining entries
-				print(" -> ", item2.PartKey, "\n")
 				if !yield(item2) {
 					return
 				}
 				item2, err2 = c.file2.Next()
 			} else if err2 != nil {
 				// Only f1 has remaining entries
-				print(" -> ", item1.PartKey, "\n")
 				if !yield(item1) {
 					return
 				}
 				item1, err1 = c.file1.Next()
 			} else {
 				if core.UberComparator(item1.PartKey, item2.PartKey) != 1 {
-					print(" -> ", item1.PartKey, "\n")
 					if !yield(item1) {
 						return
 					}
 					item1, err1 = c.file1.Next()
 				} else {
-					print(" -> ", item2.PartKey, "\n")
 					if !yield(item2) {
 						return
 					}

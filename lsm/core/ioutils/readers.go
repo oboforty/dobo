@@ -24,7 +24,7 @@ func ReadDynamic[LT keyLengthTypes](reader io.Reader) ([]byte, error) {
 	// }
 
 	dataBytes := make([]byte, dataLength)
-	_, err = reader.Read(dataBytes)
+	_, err = io.ReadFull(reader, dataBytes)
 
 	if err != nil {
 		return nil, err

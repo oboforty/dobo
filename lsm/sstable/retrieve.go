@@ -120,7 +120,6 @@ func SearchDataFileGzipBlock[P core.PartKeyTypes](
 		if err := ioutils.ReadDynamicValue[uint32](compReader, &partKey); err != nil {
 			return nil, err
 		}
-		// println("@ ", partKey, searchKey)
 
 		value, err := ioutils.ReadDynamic[uint32](compReader)
 		if err != nil {
@@ -230,7 +229,7 @@ func (it *DataFileGzipBlockIterator[P]) Next() (*core.Item[P], error) {
 
 	value, err := ioutils.ReadDynamic[uint32](it.compReader)
 	if err != nil {
-		println("@@ baj van time val 4 ", err.Error(), partKey)
+		println("@@ baj van more", err.Error(), partKey)
 		return nil, err
 	}
 

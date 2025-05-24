@@ -38,18 +38,15 @@ func TestTablesCompaction(t *testing.T) {
 	}
 
 	// Arrange - flush to disc
-	println("1 -- ##############")
 	if err := sstable1.WriteToDisc(&iter1); err != nil {
 		t.Error(err)
 		t.FailNow()
 	}
-	println("2 -- ##############")
 	if err := sstable2.WriteToDisc(&iter2); err != nil {
 		t.Error(err)
 		t.FailNow()
 	}
 
-	println("###################################################\n")
 	// Act - compact them, should be merge sort across all data structures
 	sstable3, err := sstable.CompactTables(sstable1, sstable2, 2)
 	if err != nil {
