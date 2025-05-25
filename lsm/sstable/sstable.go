@@ -115,6 +115,7 @@ func (ss *SSTable[P]) Get(searchKey P) *core.ItemQuery[P] {
 	if siHit == nil {
 		return nil
 	}
+	println("@ ", searchKey, " idx file hit: ", siHit.GetBlockOffset(), siHit.GetInterBlockOffset())
 
 	datHit, err := SearchDataFileGzipBlock(
 		ss.FileBase()+".dat",

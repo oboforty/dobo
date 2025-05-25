@@ -147,9 +147,15 @@ func TestFlushMemTable(t *testing.T) {
 func TestWriteReadItemSSTable(t *testing.T) {
 	// Arrange: Memtable shou ld be flushed after 10 items
 	const VAL_SIZE uint32 = 10
-	const BLOCK_SIZE = 64 * 1024
+	const BLOCK_SIZE = 5 * 1024
 	const n_items = 10 * (uint32(BLOCK_SIZE) / VAL_SIZE)
-	cfg := SetupTable(t, 0, BLOCK_SIZE, true)
+
+	cfg := SetupTable(
+		t,
+		0,
+		BLOCK_SIZE,
+		false,
+	)
 	pkt, _ := core.GetTypeInfo[int32]()
 
 	sstable := sstable.New[int32](
@@ -159,7 +165,7 @@ func TestWriteReadItemSSTable(t *testing.T) {
 	// at seed=1337, generated item values are:
 	// 14,20,31,33,74,89,96,259
 	iter := TestIterable{
-		Randomize:    false,
+		Randomize:    true,
 		NItems:       n_items,
 		ItemSize:     VAL_SIZE,
 		FoundSSLevel: 0,
@@ -170,6 +176,8 @@ func TestWriteReadItemSSTable(t *testing.T) {
 		t.Error(err)
 		t.FailNow()
 	}
+
+	t.Logf("Random item key: %d value: %s", iter.RndItem.PartKey, string(iter.RndItem.Value))
 
 	// Assert - correct idx file
 	// idx file entries should be (3 * 4 + 4 = 16 bytes (key itself is ))

@@ -1,6 +1,7 @@
 package tests_system
 
 import (
+	"bytes"
 	"testing"
 
 	"github.com/oboforty/dobo/lsm/core"
@@ -47,6 +48,9 @@ func TestTablesCompaction(t *testing.T) {
 		t.FailNow()
 	}
 
+	expectedItem1 := iter1.RndItem
+	expectedItem2 := iter2.RndItem
+
 	// Act - compact them, should be merge sort across all data structures
 	sstable3, err := sstable.CompactTables(sstable1, sstable2, 2)
 	if err != nil {
@@ -54,5 +58,55 @@ func TestTablesCompaction(t *testing.T) {
 		t.FailNow()
 	}
 
-	println(sstable3.GenerationId)
+	sstable1.Get(expectedItem1.PartKey)
+	return
+
+	// Assert - one item from both tables can be found
+	actualItem := sstable3.Get(expectedItem1.PartKey)
+
+	if actualItem == nil || actualItem.Value == nil {
+		t.Error("Item not found #1")
+		t.FailNow()
+	}
+
+	if !bytes.Equal(expectedItem1.Value, actualItem.Value) {
+		t.Log("Expected value: ", expectedItem1.Value)
+		t.Log("Actual value:   ", actualItem.Value)
+
+		t.Errorf("Malformed item found #1")
+		t.FailNow()
+	}
+
+	if expectedItem1.PartKey != actualItem.PartKey {
+		t.Log("Expected key: ", expectedItem1.PartKey)
+		t.Log("Actual key:   ", actualItem.PartKey)
+
+		t.Errorf("Malformed item found #1")
+		t.FailNow()
+	}
+
+	actualItem = sstable3.Get(expectedItem2.PartKey)
+
+	if actualItem == nil || actualItem.Value == nil {
+		t.Error("Item not found #2")
+		t.FailNow()
+	}
+
+	if !bytes.Equal(expectedItem2.Value, actualItem.Value) {
+		t.Log("Expected value: ", expectedItem2.Value)
+		t.Log("Actual value:   ", actualItem.Value)
+
+		t.Errorf("Malformed item found #2")
+		t.FailNow()
+	}
+
+	if expectedItem2.PartKey != actualItem.PartKey {
+		t.Log("Expected key: ", expectedItem2.PartKey)
+		t.Log("Actual key:   ", actualItem.PartKey)
+
+		t.Errorf("Malformed item found #2")
+		t.FailNow()
+	}
+
+	// println(sstable3.GenerationId)
 }

@@ -3,13 +3,11 @@ package tests_system
 import (
 	"bytes"
 	"iter"
-	rand2 "math/rand"
-	rand "math/rand/v2"
+	"math/rand/v2"
 	"os"
 	"path/filepath"
 	"sort"
 	"testing"
-	"time"
 
 	"github.com/oboforty/dobo/lsm"
 	"github.com/oboforty/dobo/lsm/bloom"
@@ -30,14 +28,17 @@ type TestIterable struct {
 func (t *TestIterable) ItemIterator() iter.Seq[*core.Item[int32]] {
 	var rnd *rand.Rand
 	if t.Randomize {
-		rnd = rand.New(rand.NewPCG(uint64(time.Now().UnixNano()), uint64(time.Now().UnixNano())))
+		rnd = GetRnd()
 	} else {
-		rnd = rand.New(rand.NewPCG(1337, 0))
+		rnd = rand.New(rand.NewPCG(1337, 0x5DEECE66D))
 	}
 
 	keys := make([]int32, 0, t.NItems)
 	for range t.NItems {
 		keys = append(keys, rnd.Int32N(1000000))
+	}
+	t.RndItem = &core.Item[int32]{
+		PartKey: keys[rnd.IntN(int(t.NItems)-1)],
 	}
 	sort.Slice(keys, func(i, j int) bool {
 		return keys[i] < keys[j]
@@ -52,7 +53,7 @@ func (t *TestIterable) ItemIterator() iter.Seq[*core.Item[int32]] {
 			}
 
 			// pick out a random item for later testing
-			if t.RndItem == nil && i > t.NItems/3 && rnd.Float32() > 0.9 {
+			if t.RndItem.PartKey == item.PartKey {
 				t.RndItem = item
 			}
 
@@ -148,6 +149,23 @@ func SetupTable(t *testing.T, memsize uint64, blocksize uint32, cleanup bool) *l
 	}
 }
 
+func GetRnd() *rand.Rand {
+	f, err := os.Open("/dev/urandom")
+	if err != nil {
+		panic(err)
+	}
+	defer f.Close()
+
+	var b [32]byte
+	_, err = f.Read(b[:])
+	if err != nil {
+		panic(err)
+	}
+
+	// now := uint64(time.Now().UnixNano())
+	return rand.New(rand.NewChaCha8(b))
+}
+
 const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 const (
 	letterIdxBits = 6                    // 6 bits to represent a letter index
@@ -155,14 +173,14 @@ const (
 	letterIdxMax  = 63 / letterIdxBits   // # of letter indices fitting in 63 bits
 )
 
-var src = rand2.NewSource(time.Now().UnixNano())
+var src = GetRnd()
 
 func RandAsciiByte(n int) []byte {
 	b := make([]byte, n)
 	// A src.Int63() generates 63 random bits, enough for letterIdxMax characters!
-	for i, cache, remain := n-1, src.Int63(), letterIdxMax; i >= 0; {
+	for i, cache, remain := n-1, src.Uint64(), letterIdxMax; i >= 0; {
 		if remain == 0 {
-			cache, remain = src.Int63(), letterIdxMax
+			cache, remain = src.Uint64(), letterIdxMax
 		}
 		if idx := int(cache & letterIdxMask); idx < len(letterBytes) {
 			b[i] = letterBytes[idx]
