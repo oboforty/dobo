@@ -150,6 +150,8 @@ func TestWriteReadItemSSTable(t *testing.T) {
 	const BLOCK_SIZE = 5 * 1024
 	const n_items = 10 * (uint32(BLOCK_SIZE) / VAL_SIZE)
 
+	RandomizeTests(0)
+
 	cfg := SetupTable(
 		t,
 		0,
@@ -165,10 +167,10 @@ func TestWriteReadItemSSTable(t *testing.T) {
 	// at seed=1337, generated item values are:
 	// 14,20,31,33,74,89,96,259
 	iter := TestIterable{
-		Randomize:    true,
-		NItems:       n_items,
-		ItemSize:     VAL_SIZE,
-		FoundSSLevel: 0,
+		RandomizeSeed: 1338,
+		NItems:        n_items,
+		ItemSize:      VAL_SIZE,
+		FoundSSLevel:  0,
 	}
 
 	// Act - write to disc
@@ -191,7 +193,7 @@ func TestWriteReadItemSSTable(t *testing.T) {
 	startTime := time.Now()
 	actualItem := sstable.Get(expectedItem.PartKey)
 	elapsed := time.Since(startTime)
-	t.Logf("GET took %d μs", elapsed.Microseconds())
+	t.Logf("GET %d took %d μs", expectedItem.PartKey, elapsed.Microseconds())
 
 	if actualItem == nil || actualItem.Value == nil {
 		t.Error("Item not found")

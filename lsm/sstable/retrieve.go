@@ -104,34 +104,50 @@ func SearchDataFileGzipBlock[P core.PartKeyTypes](
 	}
 	defer compReader.Close()
 
-	// skip bytes until we get to the relevant offset
-	// @TODO: can this be optimzied? e.g. skip with buffer of 1MB?
-	// var skipBuffer []byte
-	// skipReader := io.LimitReader(compReader, int64(startInterBlockOffset))
-	// if _, err = skipReader.Read(skipBuffer); err != nil {
-	// 	return nil, err
-	// }
-	// println("@ OFFSET ", startInterBlockOffset)
+	// Skip to the correct position within the block
+	if startInterBlockOffset > 0 {
+		skipBuffer := make([]byte, 1024) // 1KB buffer for skipping
+		remaining := int64(startInterBlockOffset)
+		for remaining > 0 {
+			toRead := int64(len(skipBuffer))
+			if toRead > remaining {
+				toRead = remaining
+			}
+			n, err := compReader.Read(skipBuffer[:toRead])
+			if err != nil && err != io.EOF {
+				return nil, err
+			}
+			remaining -= int64(n)
+			if n == 0 {
+				break
+			}
+		}
+	}
 
-	// @TODO: why is this wrong again?
-	// now start reading entries until we find our key
+	// Read entries until we find our key or reach EOF
 	for {
 		var partKey P
 		if err := ioutils.ReadDynamicValue[uint32](compReader, &partKey); err != nil {
+			if err == io.EOF {
+				return nil, fmt.Errorf("key not found in block")
+			}
 			return nil, err
 		}
 
 		value, err := ioutils.ReadDynamic[uint32](compReader)
 		if err != nil {
+			if err == io.EOF {
+				return nil, fmt.Errorf("value not found in block")
+			}
 			return nil, err
 		}
 
+		// println("@ RE>> ", partKey)
 		if core.UberComparator(partKey, searchKey) == 0 {
 			if len(value) == 0 {
 				// tombstone found
 				value = nil
 			}
-
 			return &ValueSearchHit{Value: value}, nil
 		}
 	}

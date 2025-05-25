@@ -20,7 +20,10 @@ func TestWriteReadConfig(t *testing.T) {
 
 	// Arrange - just write one item to have summary & index page
 	if err := sst1.WriteToDisc(&TestIterable{
-		Randomize: false, NItems: 2, ItemSize: 10, FoundSSLevel: 0,
+		RandomizeSeed: 1337,
+		NItems:        2,
+		ItemSize:      10,
+		FoundSSLevel:  0,
 	}); err != nil {
 		t.Error(err)
 		t.FailNow()

@@ -74,17 +74,17 @@ func (ss *SSTable[P]) WriteToDisc(table IterableTable[P]) error {
 	}
 
 	var recordsWritten uint32
+	var prevBlockOffset uint32
 
 	// tree is iterated in partition key order!
 	for node := range table.ItemIterator() {
 		// Get current start of block
 		keyLength := core.GetSizeTypeInfo(node.PartKey, &ss.partKeyTypeInfo)
+		blockOffset, interBlockOffset := dat_file.GetOffsets()
 
-		if recordsWritten%ss.MinIdxInterval == 0 {
-
+		if recordsWritten%ss.MinIdxInterval == 0 || prevBlockOffset != blockOffset {
 			// Write Index File (3 int32 + the dynamic sized key itself)
-			blockOffset, interBlockOffset := dat_file.GetOffsets()
-
+			// we also write an .idx entry whenever a new compressed block is started (otherwise .idx would point to the previous comp. block for certain items!)
 			buf := new(bytes.Buffer)
 			binary.Write(buf, binary.BigEndian, keyLength)
 			binary.Write(buf, binary.BigEndian, node.PartKey)
@@ -139,6 +139,7 @@ func (ss *SSTable[P]) WriteToDisc(table IterableTable[P]) error {
 		ss.bloom.Add(node.PartKey)
 
 		recordsWritten += 1
+		prevBlockOffset = blockOffset
 	}
 
 	// Write Bloom to disc

@@ -17,21 +17,17 @@ import (
 )
 
 type TestIterable struct {
-	NItems       uint32
-	ItemSize     uint32
-	Randomize    bool
-	FoundSSLevel int8
+	NItems        uint32
+	ItemSize      uint32
+	RandomizeSeed uint64
+	FoundSSLevel  int8
 
 	RndItem *core.Item[int32]
 }
 
+var rnd *rand.Rand
+
 func (t *TestIterable) ItemIterator() iter.Seq[*core.Item[int32]] {
-	var rnd *rand.Rand
-	if t.Randomize {
-		rnd = GetRnd()
-	} else {
-		rnd = rand.New(rand.NewPCG(1337, 0x5DEECE66D))
-	}
 
 	keys := make([]int32, 0, t.NItems)
 	for range t.NItems {
@@ -149,7 +145,12 @@ func SetupTable(t *testing.T, memsize uint64, blocksize uint32, cleanup bool) *l
 	}
 }
 
-func GetRnd() *rand.Rand {
+func RandomizeTests(seed uint64) {
+	if seed != 0 {
+		rnd = rand.New(rand.NewPCG(seed, 2))
+		return
+	}
+
 	f, err := os.Open("/dev/urandom")
 	if err != nil {
 		panic(err)
@@ -163,7 +164,7 @@ func GetRnd() *rand.Rand {
 	}
 
 	// now := uint64(time.Now().UnixNano())
-	return rand.New(rand.NewChaCha8(b))
+	rnd = rand.New(rand.NewChaCha8(b))
 }
 
 const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
@@ -173,14 +174,12 @@ const (
 	letterIdxMax  = 63 / letterIdxBits   // # of letter indices fitting in 63 bits
 )
 
-var src = GetRnd()
-
 func RandAsciiByte(n int) []byte {
 	b := make([]byte, n)
 	// A src.Int63() generates 63 random bits, enough for letterIdxMax characters!
-	for i, cache, remain := n-1, src.Uint64(), letterIdxMax; i >= 0; {
+	for i, cache, remain := n-1, rnd.Uint64(), letterIdxMax; i >= 0; {
 		if remain == 0 {
-			cache, remain = src.Uint64(), letterIdxMax
+			cache, remain = rnd.Uint64(), letterIdxMax
 		}
 		if idx := int(cache & letterIdxMask); idx < len(letterBytes) {
 			b[i] = letterBytes[idx]

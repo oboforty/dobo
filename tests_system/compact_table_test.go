@@ -25,17 +25,17 @@ func TestTablesCompaction(t *testing.T) {
 	)
 
 	iter1 := TestIterable{
-		Randomize:    true,
-		NItems:       n_items,
-		ItemSize:     VAL_SIZE,
-		FoundSSLevel: 0,
+		RandomizeSeed: 0,
+		NItems:        n_items,
+		ItemSize:      VAL_SIZE,
+		FoundSSLevel:  0,
 	}
 
 	iter2 := TestIterable{
-		Randomize:    true,
-		NItems:       n_items,
-		ItemSize:     VAL_SIZE,
-		FoundSSLevel: 0,
+		RandomizeSeed: 0,
+		NItems:        n_items,
+		ItemSize:      VAL_SIZE,
+		FoundSSLevel:  0,
 	}
 
 	// Arrange - flush to disc
