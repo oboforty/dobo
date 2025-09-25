@@ -104,6 +104,13 @@ func SearchDataFileGzipBlock[P core.PartKeyTypes](
 	}
 	defer compReader.Close()
 
+	// skip bytes until we get to the relevant offset
+	// var skipBuffer []byte
+	// skipReader := io.LimitReader(compReader, int64(startInterBlockOffset))
+	// if _, err = skipReader.Read(skipBuffer); err != nil {
+	// 	return nil, err
+	// }
+
 	// Skip to the correct position within the block
 	if startInterBlockOffset > 0 {
 		skipBuffer := make([]byte, 1024) // 1KB buffer for skipping

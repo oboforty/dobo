@@ -1,28 +1,42 @@
 import time
+from typing import Annotated
 
-from fastapi import Request, FastAPI
+from fastapi import Request, FastAPI, Depends
 from fastapi.exceptions import RequestValidationError
 
+from DoboApi.services.db_node_pool import get_node, NodeCommandWrapper
 
-async def inject_current_table(request: Request):
-    # TODO: load table metadata & inject?
+
+async def inject_db_conn(
+    request: Request,
+    db: Annotated[NodeCommandWrapper, Depends(get_node)]
+):
+    """
+    Injects current table name & node resource (connected from DB pool) to the request.
+
+    NOTE: you can also connect a table to an endpoint function as such:
+          async def my_request(
+            request: Request,
+            db: Annotated[NodeCommandWrapper, Depends(get_node)]
+          ):
+              pass
+    """
     table_name = request.path_params.get('table')
     if not table_name:
         table_name = request.query_params.get("table")
 
-    # table_name = None
-    #
-    # match request.method:
-    #     case "GET":
-    #     case _:
-    #         try:
-    #             body = await request.json()
-    #             table_name = body.get("table")
-    #         except (ValueError, RequestValidationError):
-    #             pass
-    #
-    # request.state.table = table_name
-    pass
+    match request.method:
+        case "GET":
+            pass
+        case _:
+            try:
+                body = await request.json()
+                table_name = body.get("table")
+            except (ValueError, RequestValidationError):
+                pass
+
+    request.state.table = table_name
+    request.state.db = db
 
 
 def setup_middleware(app: FastAPI):

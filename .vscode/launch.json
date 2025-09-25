@@ -17,7 +17,6 @@
       "showLog": true,
       "trace": "verbose"
     },
-
     {
       "name": "Provision CLI",
       "type": "go",

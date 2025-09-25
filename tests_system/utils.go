@@ -28,6 +28,9 @@ type TestIterable struct {
 var rnd *rand.Rand
 
 func (t *TestIterable) ItemIterator() iter.Seq[*core.Item[int32]] {
+	if rnd == nil {
+		panic("Pls call RandomizeTests()")
+	}
 
 	keys := make([]int32, 0, t.NItems)
 	for range t.NItems {

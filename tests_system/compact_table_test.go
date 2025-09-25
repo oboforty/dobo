@@ -13,6 +13,8 @@ func TestTablesCompaction(t *testing.T) {
 	const VAL_SIZE uint32 = 10
 	const BLOCK_SIZE = 1024
 	const n_items = 2 * (uint32(BLOCK_SIZE) / VAL_SIZE)
+
+	RandomizeTests(0)
 	cfg := SetupTable(t, 0, BLOCK_SIZE, false)
 	pkt, _ := core.GetTypeInfo[int32]()
 
@@ -57,9 +59,6 @@ func TestTablesCompaction(t *testing.T) {
 		t.Error(err)
 		t.FailNow()
 	}
-
-	sstable1.Get(expectedItem1.PartKey)
-	return
 
 	// Assert - one item from both tables can be found
 	actualItem := sstable3.Get(expectedItem1.PartKey)

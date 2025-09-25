@@ -1,12 +1,16 @@
+from typing import Annotated
+from contextvars import ContextVar
+
 from fastapi import Depends, APIRouter, Body
 from starlette.requests import Request
 
-from DoboApi.api.mw import inject_current_table
+from DoboApi.api.mw import inject_db_conn
+from dbobo.node import NodeCommandWrapper
 
 tables_router = APIRouter(
     prefix='/tables',
     tags=['tables'],
-    dependencies=[Depends(inject_current_table)],
+    dependencies=[Depends(inject_db_conn)],
 )
 
 
@@ -15,8 +19,11 @@ async def list_tables(request: Request):
     """
     LIST all Tables
     """
+    db: NodeCommandWrapper = request.state.db
+    tables = await db.list_tables()
+
     return {
-        "tables": []
+        "tables": tables
     }
 
 
@@ -32,16 +39,18 @@ async def create_table(table):
 
 
 @tables_router.get("/{table}")
-async def get_table(table):
+async def get_table(request: Request):
     """
     Get Table information
     """
-    # with checkout_entity(wid) as entity:
-    #     entity.items['gold'] += 1
+    db: NodeCommandWrapper = request.state.db
+    tables = await db.list_tables()
+
+    # TODO: ITT: describe table
 
     # return entity.view
     return {
-        'table': table,
+        'table': request.state.table,
     }
 
 

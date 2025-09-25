@@ -12,7 +12,7 @@ CMD_ERR = 2
 
 
 class ServerNodeAsync:
-    def __init__(self, host: str, tls_cert: str, tls_key: str):
+    def __init__(self, host: str, *, tls_cert: str, tls_key: str):
         ss = host.split(":")
         self.tls_cert = tls_cert
         self.tls_key = tls_key
@@ -129,18 +129,21 @@ class NodeCommandWrapper:
         self.conn = conn
 
     async def list_tables(self) -> list[str]:
-        tables_json, = await self.conn.request(4)
+        tables_json, = await self.conn.request(
+            cmd=4
+        )
 
         return json.loads(tables_json)
 
     async def create_table(self, cfg: dict) -> dict:
-        cfg1, = await self.conn.request(
+        asd, = await self.conn.request(
             cmd=11,
             payload_format=1, # cfg type = json
             dynamic_payload=[
                 json.dumps(cfg).encode('ascii')
             ]
         )
+        print(asd)
 
     async def get_item(self, table: str, key: bytes) -> Item:
         value, = await self.conn.request(

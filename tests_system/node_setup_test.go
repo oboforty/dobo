@@ -12,6 +12,8 @@ import (
 // Creates and saves an LSM table to disc,
 // Then checks if the same table's configs can be reloaded from a fresh start
 func TestWriteReadConfig(t *testing.T) {
+	RandomizeTests(0)
+
 	// Arrange - random cfg values
 	cfg := SetupTable(t, 1234, 2*64*1024, true)
 	pkt, _ := core.GetTypeInfo[int32]()

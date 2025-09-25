@@ -8,11 +8,7 @@ from DoboApi.api.docs.openapi import create_openapi_schema
 from DoboApi.api.mw import setup_middleware
 from DoboApi.api.router import api_router
 
-from DoboApi.lifetime import (
-    register_shutdown_event,
-    register_startup_event,
-    setup_db
-)
+from DoboApi.lifetime import register_startup_event
 
 APP_ROOT = Path(__file__).parent
 
@@ -46,18 +42,11 @@ def get_app() -> FastAPI:
 
     app.openapi = openapi_gen
 
-    @app.on_event("startup")
-    def _setup_db():
-        setup_db()
-
     register_startup_event(app)
-    register_shutdown_event(app)
 
     app.include_router(api_router, prefix='')
 
-    setup_middleware(app)
-
-    if os.environ.get('HELLAS_ENV') != 'prod':
+    if os.environ.get('HTTPAPI_ENV') != 'prod':
         app.mount(
             "/public",
             StaticFiles(directory=APP_ROOT / "public"),
