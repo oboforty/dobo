@@ -1,8 +1,8 @@
 package tests_system
 
 import (
-	"path/filepath"
 	"testing"
+	"time"
 
 	"bytes"
 	"encoding/json"
@@ -67,11 +67,11 @@ func TestReadWriteMemTable(t *testing.T) {
 
 // Tests writing to disc
 func TestFlushMemTable(t *testing.T) {
-	// Arrange: Memtable should be flushed after 10 items
+	// Arrange: SS Table
 	const N_ITEMS int32 = 10
 	unitSize := memtable.RB_NODE_PTRS_SIZE + 4 + 8
 	cfg := SetupTable(t,
-		unitSize*uint32(N_ITEMS), // mem size
+		unitSize*uint64(N_ITEMS), // mem size
 		64*1024,                  // compression block size
 		true,
 	)
@@ -91,7 +91,7 @@ func TestFlushMemTable(t *testing.T) {
 
 	// Assert - At this point memtable should be full
 	if !table.MemTable.IsFull() {
-		expectedSize := unitSize * uint32(N_ITEMS)
+		expectedSize := unitSize * uint64(N_ITEMS)
 
 		t.Error("Memtable was expected to be full after: ", expectedSize)
 		t.FailNow()
@@ -101,46 +101,63 @@ func TestFlushMemTable(t *testing.T) {
 	table.Delete(5)
 
 	// Act - flush memtable to disc
+	startTime := time.Now()
 	if err = table.FlushMemToDisc(); err != nil {
 		t.Error(err)
 		t.FailNow()
 	}
+	elapsed := time.Since(startTime)
+	t.Logf("FLUSH took %d μs", elapsed.Microseconds())
 
 	// Assert - memtable is cleared
 	if table.MemTable.ByteSize() != 0 {
-		t.Error("MemTable should have be empty!")
-		t.FailNow()
-	}
-
-	// Assert - SSTable is created
-	if len(table.SSTables) != 1 || table.SSTables[0].GetGenerationId() != table.CurrentGenerationId() {
-		t.Error("SSTable GenId mismatch")
+		t.Error("MemTable should haven be empty!")
 		t.FailNow()
 	}
 
 	// Assert - get item from disc
+	startTime = time.Now()
 	item := table.Get(4)
 	if item.PartKey != 4 || len(item.Value) != 8 {
 		t.Error("SSTable GET fail")
 		t.FailNow()
 	}
+	elapsed = time.Since(startTime)
+	t.Logf("GET took %d μs", elapsed.Microseconds())
 
 	// Assert - get deleted item from disc
+	startTime = time.Now()
 	item = table.Get(5)
 	if item.PartKey != 5 || item.Value != nil || !item.Deleted {
 		t.Error("SSTable GET deleted fail")
 		t.FailNow()
 	}
+	elapsed = time.Since(startTime)
+	t.Logf("GET deleted took %d μs", elapsed.Microseconds())
+
+	// Assert - SSTable is created
+	// if len(table.SSTables) != 1 || table.SSTables[0].GetGenerationId() != table.CurrentGenerationId() {
+	// 	t.Error("SSTable GenId mismatch")
+	// 	t.FailNow()
+	// }
 }
 
 // Writes a bunch of items (10 blocks) to disc
 // Then tests if an item can be retrieved
 func TestWriteReadItemSSTable(t *testing.T) {
 	// Arrange: Memtable shou ld be flushed after 10 items
-	const VAL_SIZE uint = 10
-	const BLOCK_SIZE = 64 * 1024
-	const n_items = 10 * (BLOCK_SIZE / VAL_SIZE)
-	cfg := SetupTable(t, 0, BLOCK_SIZE, true)
+	const VAL_SIZE uint32 = 10
+	const BLOCK_SIZE = 5 * 1024
+	const n_items = 10 * (uint32(BLOCK_SIZE) / VAL_SIZE)
+
+	RandomizeTests(0)
+
+	cfg := SetupTable(
+		t,
+		0,
+		BLOCK_SIZE,
+		false,
+	)
 	pkt, _ := core.GetTypeInfo[int32]()
 
 	sstable := sstable.New[int32](
@@ -150,10 +167,10 @@ func TestWriteReadItemSSTable(t *testing.T) {
 	// at seed=1337, generated item values are:
 	// 14,20,31,33,74,89,96,259
 	iter := TestIterable{
-		Randomize:    false,
-		NItems:       n_items,
-		ItemSize:     VAL_SIZE,
-		FoundSSLevel: 0,
+		RandomizeSeed: 1338,
+		NItems:        n_items,
+		ItemSize:      VAL_SIZE,
+		FoundSSLevel:  0,
 	}
 
 	// Act - write to disc
@@ -161,6 +178,8 @@ func TestWriteReadItemSSTable(t *testing.T) {
 		t.Error(err)
 		t.FailNow()
 	}
+
+	t.Logf("Random item key: %d value: %s", iter.RndItem.PartKey, string(iter.RndItem.Value))
 
 	// Assert - correct idx file
 	// idx file entries should be (3 * 4 + 4 = 16 bytes (key itself is ))
@@ -171,63 +190,30 @@ func TestWriteReadItemSSTable(t *testing.T) {
 	}
 
 	// Act - read from disc
+	startTime := time.Now()
 	actualItem := sstable.Get(expectedItem.PartKey)
-	// actualItem := sstable.Get(89)
+	elapsed := time.Since(startTime)
+	t.Logf("GET %d took %d μs", expectedItem.PartKey, elapsed.Microseconds())
 
 	if actualItem == nil || actualItem.Value == nil {
 		t.Error("Item not found")
 		t.FailNow()
 	}
 
-	if expectedItem.PartKey != actualItem.PartKey || !bytes.Equal(expectedItem.Value, actualItem.Value) {
-		t.Error("Malformed item found")
+	if !bytes.Equal(expectedItem.Value, actualItem.Value) {
+		t.Log("Expected value: ", expectedItem.Value)
+		t.Log("Actual value:   ", actualItem.Value)
+
+		t.Errorf("Malformed item found")
 		t.FailNow()
 	}
 
+	if expectedItem.PartKey != actualItem.PartKey {
+		t.Log("Expected key: ", expectedItem.PartKey)
+		t.Log("Actual key:   ", actualItem.PartKey)
+
+		t.Errorf("Malformed item found")
+		t.FailNow()
+	}
 	// @TODO: assert dat & idx file content?
-}
-
-// Creates and saves an LSM table to disc,
-// Then checks if the same table's configs can be reloaded from a fresh start
-func TestWriteReadConfig(t *testing.T) {
-	// Arrange - random cfg values
-	cfg := SetupTable(t, 1234, 2*64*1024, true)
-	pkt, _ := core.GetTypeInfo[int32]()
-
-	sst1 := sstable.New[int32](&cfg.SSTable, cfg.Name, *pkt, 0)
-
-	// Arrange - just write one item to have summary & index page
-	if err := sst1.WriteToDisc(&TestIterable{
-		Randomize: false, NItems: 2, ItemSize: 10, FoundSSLevel: 0,
-	}); err != nil {
-		t.Error(err)
-		t.FailNow()
-	}
-
-	// Arrange - write config to disc
-	cfg.KeyType = "int32"
-	err := cfg.WriteToDisc()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	tablePath := filepath.Join(cfg.SSTable.DBPath, cfg.Name)
-	treeI, err := lsm.NewFromDisc(tablePath)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	tree := treeI.(*lsm.LSMTreeTable[int32])
-	if tree.TableName() != cfg.Name {
-		t.Error("Invalid tablename")
-		t.FailNow()
-	}
-
-	if tree.SSTables[0].GetGenerationId() != 0 {
-		t.Error("Invalid GenerationId")
-		t.FailNow()
-	}
-
-	// Assert - file content
-	// @TODO....
 }

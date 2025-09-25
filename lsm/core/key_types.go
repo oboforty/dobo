@@ -11,6 +11,11 @@ type PartKeyTypes interface {
 		time.Time
 }
 
+// UberComparator returns
+//
+//	-1 if x is less than y,
+//	 0 if x equals y,
+//	+1 if x is greater than y.
 func UberComparator[T PartKeyTypes](x, y T) int {
 
 	switch a := any(x).(type) {

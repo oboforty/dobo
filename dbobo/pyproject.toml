@@ -1,14 +1,9 @@
-[tool.poetry]
-name = "dobodb"
+[project]
+name = "dbobo"
 version = "0.1.0"
-description = ""
-authors = ["Rajmund Csombordi <rajmund.csombordi@gmail.com>"]
+description = "Python client library for Obo DB"
 readme = "README.md"
-
-[tool.poetry.dependencies]
-python = "^3.10"
-
-
-[build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+authors = [
+    {name="Rajmund Csombordi", email="rajmund.csombordi@gmail.com"}
+]
+requires-python = ">=3.12"

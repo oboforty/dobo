@@ -3,12 +3,12 @@ import random
 from fastapi import Depends, APIRouter
 from starlette.requests import Request
 
-from DoboApi.api.mw import inject_current_table
+from DoboApi.api.mw import inject_db_conn
 
 bulk_router = APIRouter(
     prefix='/tables/{table}/items',
     tags=["items bulk"],
-    dependencies=[Depends(inject_current_table)],
+    dependencies=[Depends(inject_db_conn)],
 )
 
 

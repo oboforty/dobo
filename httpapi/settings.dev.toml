@@ -3,12 +3,9 @@ verify_email_template = 'Dave1VerificationTpl'
 workers_count = 1
 
 [DB]
-database = 'hellas'
-dsn = 'sqlite+aiosqlite:///{database}.db'
-#dsn = 'postgresql+asyncpg://DoboApi:DoboApi@localhost:5432/{database}'
-
-[OAuth]
-algorithm = "RS512"
-issuer = ''
-audience = 'gh'
-
+host = '127.0.0.1'
+port = 2480
+database = '' # not used for now
+tls_cert='/home/rajmund_csombordi/obodb/nodekey.crt'
+tls_key='/home/rajmund_csombordi/obodb/nodekey.key'
+pool_size=1

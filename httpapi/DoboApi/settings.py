@@ -16,7 +16,7 @@ from pydantic_settings import (
 
 
 TEMP_DIR = Path(gettempdir())
-HELLAS_ENV = os.environ.get('HELLAS_ENV', 'dev')
+HTTPAPI_DEV = os.environ.get('HTTPAPI_DEV', 'dev')
 
 
 class LogLevel(str, enum.Enum):  # noqa: WPS600
@@ -30,25 +30,15 @@ class LogLevel(str, enum.Enum):  # noqa: WPS600
     FATAL = "FATAL"
 
 
-class DBConfig(BaseModel):
-    dsn: str
+class OboDBConfig(BaseModel):
+    host: str = "127.0.0.1"
+    port: int = 8000
     database: str
-    test_database: str = 'test_db'
 
-    @property
-    def db_url(self) -> str:
-        """
-        Assemble database URL from settings.
+    tls_cert: str
+    tls_key: str
 
-        :return: database URL.
-        """
-        return self.dsn.format(database=self.database)
-
-
-class OAuthConfig(BaseModel):
-    algorithm: str
-    issuer: str
-    audience: str
+    pool_size: int = 3
 
 
 class Settings(BaseSettings):
@@ -58,8 +48,7 @@ class Settings(BaseSettings):
     These parameters can be configured
     with environment variables.
     """
-    DB: DBConfig
-    OAuth: OAuthConfig
+    DB: OboDBConfig
 
     host: str = "127.0.0.1"
     port: int = 8000
@@ -87,7 +76,7 @@ class Settings(BaseSettings):
         return (TomlConfigSettingsSource(settings_cls),)
 
     model_config = SettingsConfigDict(
-        toml_file=f'settings.{HELLAS_ENV}.toml',
+        toml_file=f'settings.{HTTPAPI_DEV}.toml',
         env_file_encoding="utf-8",
     )
 

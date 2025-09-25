@@ -1,4 +1,5 @@
 import asyncio
+import json
 import os.path
 
 from dbobo import ServerNodeAsync, Table, int32, float32
@@ -32,16 +33,22 @@ async def main():
         # table.type_hint = int
 
         print("Inserting new item")
-        val = b"""{"name":"Rajmund", "age": 350, "data":{"attr1": "asdasd", "adas": 123}, "teso": false}"""
-        await table.put_item(123456, val)
+        item_val = {"name":"Rajmund", "age": 350, "data":{"attr1": "asdasd", "adas": 123}, "teso": False}
+        item_content = json.dumps(item_val).encode("utf8")
+        item_key = 123456
 
-        # val = b"""{"name":"Rajmund", "age": 350, "data":{"attr1": "asdasd", "adas": 123}, "teso": false}"""
-        # await table.put_item(123123, val)
+        await table.put_item(item_key, item_content)
+
+        item = await table.get_item(item_key)
+        assert item.key == item_key, f"Key mismatch: {item.key} != {item_key}"
+        assert item.value == item_content, f"Value mismatch:\n{item.value}\n!=\n{item_val}"
 
         # Should automatically convert value json bytes to dict
-        item = await table.get_item(123456, dict)
+        item = await table.get_item(item_key, dict)
+        assert item.key == item_key, f"Key mismatch: {item.key} != {item_key}"
+        assert item.value == item_val, f"Value mismatch:\n{item.value}\n!=\n{item_val}"
 
-        print("Retrieved item:", item.key)
+        print("Retrieved item:", item.key, type(item.value))
         print(item.value)
 
 

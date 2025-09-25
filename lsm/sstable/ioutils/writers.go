@@ -58,7 +58,7 @@ func (bw *blockWriter) Write(data []byte) (int, error) {
 	if err == nil {
 		bw.interBlockOffset += uint32(nb)
 
-		if bw.interBlockOffset > uint32(bw.blockSize) {
+		if bw.blockSize > 0 && bw.interBlockOffset > uint32(bw.blockSize) {
 			bw.blockOffset += bw.interBlockOffset
 			bw.interBlockOffset = 0
 		}
@@ -91,6 +91,7 @@ type compressedBlockWriter struct {
 	blockSize        int
 	currentBlock     uint32
 	interBlockOffset uint32
+	blockId          uint16
 }
 
 func (bc *compressedBlockWriter) Write(data []byte) (int, error) {
@@ -101,6 +102,7 @@ func (bc *compressedBlockWriter) Write(data []byte) (int, error) {
 
 		if bc.buffer.Len() >= bc.blockSize {
 			err = bc.flushBuffer()
+			bc.blockId += 1
 		}
 	}
 
