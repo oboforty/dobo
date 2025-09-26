@@ -1,11 +1,13 @@
 from typing import Annotated
 from contextvars import ContextVar
 
-from fastapi import Depends, APIRouter, Body
+from fastapi import Depends, APIRouter, Body, HTTPException
 from starlette.requests import Request
 
 from DoboApi.api.mw import inject_db_conn
-from dbobo.node import NodeCommandWrapper
+
+from dbobo import Table, NodeCommandWrapper
+
 
 tables_router = APIRouter(
     prefix='/tables',
@@ -28,7 +30,7 @@ async def list_tables(request: Request):
 
 
 @tables_router.post("/")
-async def create_table(table):
+async def create_table():
     """
     Create Table
     """
@@ -43,15 +45,14 @@ async def get_table(request: Request):
     """
     Get Table information
     """
-    db: NodeCommandWrapper = request.state.db
-    tables = await db.list_tables()
+    table: dict = request.state.current_table
 
-    # TODO: ITT: describe table
+    if table is None:
+        raise HTTPException(status_code=404, detail="Table not found")
 
-    # return entity.view
-    return {
-        'table': request.state.table,
-    }
+    # TODO: ITT: describe table? with more info flag?
+
+    return table
 
 
 @tables_router.patch("/{table}")

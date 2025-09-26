@@ -1,9 +1,10 @@
 import asyncio
 import json
 import os.path
+import random
 
-from dbobo import ServerNodeAsync, Table, int32, float32
-
+from dbobo import ServerNodeAsync, Table
+from dbobo.node import ItemNotFoundError
 
 TABLE_NAME = "table1"
 KEYPATH = "/home/rajmund_csombordi/obodb/"
@@ -17,25 +18,37 @@ async def main():
     )
 
     async with db as node:
-        tables = set(await node.list_tables())
+        item_val = {
+            "name": "Rajmund",
+            "age": random.randint(1, 9999),
+            "data": {
+                "attr1": "asdasd",
+                "adas": 123
+            },
+            "teso": False
+        }
+        item_key = 123456
+
+        tables = await node.list_tables()
+        table_names = set()
 
         print("Tables:")
-        print("\n".join(sorted(tables)))
+        for table in tables:
+            print(f"- {table['name']}[{table['key_type']}] \n")
+            table_names.add(table['name'])
         print("---------------")
 
-        if TABLE_NAME not in tables:
+        if TABLE_NAME not in table_names:
             await node.create_table({
                 "name": TABLE_NAME,
                 # "key_type": "int64"
             })
 
-        table = Table[int](node, "table1")
-        # table.type_hint = int
+        table = Table[int](node, TABLE_NAME)
+        table.type_hint = int
 
         print("Inserting new item")
-        item_val = {"name":"Rajmund", "age": 350, "data":{"attr1": "asdasd", "adas": 123}, "teso": False}
         item_content = json.dumps(item_val).encode("utf8")
-        item_key = 123456
 
         await table.put_item(item_key, item_content)
 

@@ -4,11 +4,25 @@ import json
 import ssl
 import struct
 from asyncio import StreamReader, StreamWriter
-from socket import socket
 from types import TracebackType
 from typing import Literal, Self, Type, AsyncContextManager, Any, Iterable
 
-CMD_ERR = 2
+
+class RequestError(Exception):
+    def __init__(self, cmd, code, *args):
+        self.command_code = cmd
+        self.error_code = code
+        super().__init__(*args)
+
+    def __repr__(self):
+        return self.__str__()
+
+    def __str__(self):
+        return f"CMD={self.command_code!r}, ERR={self.error_code!r}, {self.args[0]})"
+
+
+class ItemNotFoundError(RequestError):
+    pass
 
 
 class ServerNodeAsync:
@@ -102,14 +116,23 @@ class ServerNodeAsync:
 
         # Response
         resp_cmd: int = struct.unpack("!B", await self.reader.read(1))[0]
+        resp_ok: int = struct.unpack("!B", await self.reader.read(1))[0]
 
-        if resp_cmd == CMD_ERR:
+        if not resp_ok:
+            err_code: int = struct.unpack("!B", await self.reader.read(1))[0]
+
             # Handle error
             # TODO: refine err reporting...
             errmsg = await self.recv_dynamic()
-            errmsg = json.loads(errmsg)
+            if errmsg == b'??':
+                errmsg = f"unknown error"
+            else:
+                errmsg = json.loads(errmsg)
 
-            raise Exception(errmsg)
+            if err_code == 4:
+                raise ItemNotFoundError(resp_cmd, err_code, errmsg)
+            else:
+                raise RequestError(resp_cmd, err_code, errmsg)
         else:
             resp_payloads: list[bytes] = []
             for i in range(expected_payloads):
@@ -128,7 +151,7 @@ class NodeCommandWrapper:
     def __init__(self, conn: ServerNodeAsync):
         self.conn = conn
 
-    async def list_tables(self) -> list[str]:
+    async def list_tables(self) -> list[dict]:
         tables_json, = await self.conn.request(
             cmd=4
         )
@@ -143,7 +166,7 @@ class NodeCommandWrapper:
                 json.dumps(cfg).encode('ascii')
             ]
         )
-        print(asd)
+        print("Create table response: ", asd)
 
     async def get_item(self, table: str, key: bytes) -> Item:
         value, = await self.conn.request(

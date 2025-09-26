@@ -70,7 +70,7 @@ func (t *TcpSocket) Listen() {
 		log.Printf("[Server] new connection %s", conn.RemoteAddr())
 		tlscon, ok := conn.(*tls.Conn)
 		if ok {
-			log.Print("ok=true")
+			// log.Print("ok=true")
 			state := tlscon.ConnectionState()
 			for _, v := range state.PeerCertificates {
 				log.Print(x509.MarshalPKIXPublicKey(v.PublicKey))

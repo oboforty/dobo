@@ -18,6 +18,7 @@ const (
 	CREATE_TABLE
 	UPDATE_TABLE
 	DROP_TABLE
+	DESCRIBE_TABLE
 	// @TODO:
 	// SETCONFIG,
 	// CREATE-TABLE, DELETE-TABLE,
@@ -26,8 +27,15 @@ const (
 )
 
 func GetTable(table lsm.LSMTreeTableInterface, conn net.Conn) error {
-	fmt.Println("GET TABLE:", table.TableName())
-	return nil
+	// TODO: @later: make client request return format? for now only JSON is supported
+
+	cfgContent, err := TableCfgBytes(table.TableInfo(), 1)
+
+	if err != nil {
+		return err
+	}
+
+	return SendCommandResponse(TABLE_INFO, conn, cfgContent)
 }
 
 func CreateTable(node Node, conn net.Conn) error {
@@ -39,8 +47,7 @@ func CreateTable(node Node, conn net.Conn) error {
 	}
 
 	if cfg.Name == "" {
-		binary.Write(conn, binary.BigEndian, CMD_ERROR)
-		binary.Write(conn, binary.BigEndian, uint8(123))
+		return SendCommandResponse(CREATE_TABLE, conn)
 	}
 
 	// @TODO: make this overriddable later?
@@ -68,7 +75,7 @@ func CreateTable(node Node, conn net.Conn) error {
 		return err
 	}
 
-	return SendCommand(CREATE_TABLE, conn, cfgContent)
+	return SendCommandResponse(CREATE_TABLE, conn, cfgContent)
 }
 
 func DropTable(table lsm.LSMTreeTableInterface, conn net.Conn) error {
@@ -84,20 +91,19 @@ func SetConfigTable(table lsm.LSMTreeTableInterface, conn net.Conn) error {
 
 func ListTables(node Node, conn net.Conn) error {
 	tt := node.ListTables()
-	var tables []string = make([]string, 0, len(tt))
+	var tables []lsm.CfgTable = make([]lsm.CfgTable, 0, len(tt))
 
-	for tableName := range tt {
-		tables = append(tables, tableName)
+	for _, table := range tt {
+		tables = append(tables, *table.TableInfo())
 	}
 
-	// @TOOD: return stats (name, size, etc... returned by TableInterface)
 	tablesJson, err := json.Marshal(tables)
 
 	if err != nil {
 		return err
 	}
 
-	return SendCommand(LIST_TABLES, conn, tablesJson)
+	return SendCommandResponse(LIST_TABLES, conn, tablesJson)
 }
 
 func HandleTableCommand(table lsm.LSMTreeTableInterface, conn net.Conn, cmd CommandType) error {

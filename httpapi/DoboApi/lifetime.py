@@ -2,7 +2,7 @@ from typing import Awaitable, Callable
 
 from fastapi import FastAPI
 
-from DoboApi.services.db_node_pool import initialize
+from DoboApi.services.db import initialize
 from DoboApi.settings import settings
 
 

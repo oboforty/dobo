@@ -5,50 +5,45 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="f89a8abc-8fa8-4f4e-8197-84b29f0e3ef7" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/README.md" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/../httpapi/DoboApi/services/db_node_pool.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../.vscode/launch.json" beforeDir="false" afterPath="$PROJECT_DIR$/../.vscode/launch.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/dbobo.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/dbobo.iml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/dbobo/serialize.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/spike_insert_item.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../httpapi/DoboApi/api/serialize.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../httpapi/DoboApi/services/db/__init__.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../httpapi/DoboApi/services/db/table_cache.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/dbobo/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/dbobo/__init__.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/dbobo/node.py" beforeDir="false" afterPath="$PROJECT_DIR$/dbobo/node.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/dbobo/table.py" beforeDir="false" afterPath="$PROJECT_DIR$/dbobo/table.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/provcli.py" beforeDir="false" afterPath="$PROJECT_DIR$/provcli.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/pyproject.toml" beforeDir="false" afterPath="$PROJECT_DIR$/pyproject.toml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../httpapi/.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/../httpapi/.gitignore" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../httpapi/DoboApi/api/items/views.py" beforeDir="false" afterPath="$PROJECT_DIR$/../httpapi/DoboApi/api/items/views.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../httpapi/DoboApi/api/mw.py" beforeDir="false" afterPath="$PROJECT_DIR$/../httpapi/DoboApi/api/mw.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../httpapi/DoboApi/application.py" beforeDir="false" afterPath="$PROJECT_DIR$/../httpapi/DoboApi/application.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../httpapi/DoboApi/db/__init__.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../httpapi/DoboApi/db/base.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../httpapi/DoboApi/db/dependencies.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../httpapi/DoboApi/db/meta.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../httpapi/DoboApi/db/migrations/README" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../httpapi/DoboApi/db/migrations/__init__.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../httpapi/DoboApi/db/migrations/env.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../httpapi/DoboApi/db/migrations/script.py.mako" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../httpapi/DoboApi/db/migrations/versions/2024-11-01-14-45_4e6efd754489.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../httpapi/DoboApi/db/models/__init__.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../httpapi/DoboApi/db/models/simpleuser.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../httpapi/DoboApi/db/repositories/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../httpapi/DoboApi/db/repositories/repository.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../httpapi/DoboApi/db/utils.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../httpapi/DoboApi/api/tables/views.py" beforeDir="false" afterPath="$PROJECT_DIR$/../httpapi/DoboApi/api/tables/views.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../httpapi/DoboApi/lifetime.py" beforeDir="false" afterPath="$PROJECT_DIR$/../httpapi/DoboApi/lifetime.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../httpapi/DoboApi/services/db_node_pool.py" beforeDir="false" afterPath="$PROJECT_DIR$/../httpapi/DoboApi/services/db/node_pool.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../httpapi/DoboApi/services/utils.py" beforeDir="false" afterPath="$PROJECT_DIR$/../httpapi/DoboApi/services/utils.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../httpapi/DoboApi/settings.py" beforeDir="false" afterPath="$PROJECT_DIR$/../httpapi/DoboApi/settings.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../httpapi/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/../httpapi/README.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../httpapi/alembic.ini" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../httpapi/poetry.lock" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../httpapi/poetry.toml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../httpapi/pyproject.toml" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/../httpapi/settings.dev.toml" beforeDir="false" afterPath="$PROJECT_DIR$/../httpapi/settings.dev.toml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../httpapi/setup.sh" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../lsm/sstable/retrieve.go" beforeDir="false" afterPath="$PROJECT_DIR$/../lsm/sstable/retrieve.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../tests_system/compact_table_test.go" beforeDir="false" afterPath="$PROJECT_DIR$/../tests_system/compact_table_test.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../tests_system/node_setup_test.go" beforeDir="false" afterPath="$PROJECT_DIR$/../tests_system/node_setup_test.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../tests_system/utils.go" beforeDir="false" afterPath="$PROJECT_DIR$/../tests_system/utils.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../lsm/core/data_types.go" beforeDir="false" afterPath="$PROJECT_DIR$/../lsm/core/data_types.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../lsm/loading.go" beforeDir="false" afterPath="$PROJECT_DIR$/../lsm/loading.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../lsm/tables.go" beforeDir="false" afterPath="$PROJECT_DIR$/../lsm/tables.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../node/commands.go" beforeDir="false" afterPath="$PROJECT_DIR$/../node/commands.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../node/commands/base.go" beforeDir="false" afterPath="$PROJECT_DIR$/../node/commands/base.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../node/commands/items.go" beforeDir="false" afterPath="$PROJECT_DIR$/../node/commands/items.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../node/commands/node.go" beforeDir="false" afterPath="$PROJECT_DIR$/../node/commands/node.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../node/commands/tables.go" beforeDir="false" afterPath="$PROJECT_DIR$/../node/commands/tables.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../node/socket/socket.go" beforeDir="false" afterPath="$PROJECT_DIR$/../node/socket/socket.go" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
     <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="FileTemplateManagerImpl">
+    <option name="RECENT_TEMPLATES">
+      <list>
+        <option value="Python Script" />
+      </list>
+    </option>
   </component>
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$/.." />
@@ -61,17 +56,41 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent">{
-  &quot;keyToString&quot;: {
-    &quot;Python.provcli.executor&quot;: &quot;Run&quot;,
-    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
-    &quot;git-widget-placeholder&quot;: &quot;wrap__up&quot;,
-    &quot;last_opened_file_path&quot;: &quot;/home/rajmund_csombordi/dev/spikes/dobo/dbobo&quot;,
-    &quot;settings.editor.selected.configurable&quot;: &quot;com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable&quot;
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "Python.insert item.executor": "Run",
+    "Python.provcli.executor": "Run",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.git.unshallow": "true",
+    "git-widget-placeholder": "main",
+    "last_opened_file_path": "/home/rajmund_csombordi/dev/spikes/dobo/dbobo",
+    "settings.editor.selected.configurable": "com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable"
   }
-}</component>
-  <component name="RunManager">
+}]]></component>
+  <component name="RunManager" selected="Python.provcli">
+    <configuration name="insert item" type="PythonConfigurationType" factoryName="Python">
+      <module name="dbobo" />
+      <option name="ENV_FILES" value="" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/spike_insert_item.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
     <configuration name="provcli" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
       <module name="dbobo" />
       <option name="ENV_FILES" value="" />
@@ -95,6 +114,10 @@
       <option name="INPUT_FILE" value="" />
       <method v="2" />
     </configuration>
+    <list>
+      <item itemvalue="Python.insert item" />
+      <item itemvalue="Python.provcli" />
+    </list>
     <recent_temporary>
       <list>
         <item itemvalue="Python.provcli" />
@@ -120,6 +143,7 @@
     <servers />
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
-    <SUITE FILE_PATH="coverage/dbobo$provcli.coverage" NAME="provcli Coverage Results" MODIFIED="1758757780260" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/dbobo$insert_item.coverage" NAME="insert item Coverage Results" MODIFIED="1758845875912" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/dbobo$provcli.coverage" NAME="provcli Coverage Results" MODIFIED="1758845942196" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
   </component>
 </project>

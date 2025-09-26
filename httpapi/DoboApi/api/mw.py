@@ -4,12 +4,13 @@ from typing import Annotated
 from fastapi import Request, FastAPI, Depends
 from fastapi.exceptions import RequestValidationError
 
-from DoboApi.services.db_node_pool import get_node, NodeCommandWrapper
+from DoboApi.services.db import get_node, get_table_metadata, NodeCommandWrapper
+from dbobo import Table
 
 
 async def inject_db_conn(
     request: Request,
-    db: Annotated[NodeCommandWrapper, Depends(get_node)]
+    node: Annotated[NodeCommandWrapper, Depends(get_node)]
 ):
     """
     Injects current table name & node resource (connected from DB pool) to the request.
@@ -35,8 +36,8 @@ async def inject_db_conn(
             except (ValueError, RequestValidationError):
                 pass
 
-    request.state.table = table_name
-    request.state.db = db
+    request.state.node = node
+    request.state.current_table = await get_table_metadata(table_name)
 
 
 def setup_middleware(app: FastAPI):

@@ -35,10 +35,14 @@ class OboDBConfig(BaseModel):
     port: int = 8000
     database: str
 
+
+class OboDBClientConfig(BaseModel):
     tls_cert: str
     tls_key: str
 
     pool_size: int = 3
+    metadata_cache_ttl: int = 300
+    summary_cache_ttl: int = 300
 
 
 class Settings(BaseSettings):
@@ -49,6 +53,7 @@ class Settings(BaseSettings):
     with environment variables.
     """
     DB: OboDBConfig
+    DBClient: OboDBClientConfig
 
     host: str = "127.0.0.1"
     port: int = 8000

@@ -152,7 +152,7 @@ func (t *LSMTreeTable[P]) loadSSTables() error {
 
 type LSMTreeTableInterface interface {
 	TableName() string
-
+	TableInfo() *CfgTable
 	// Get(partKey P) *core.ItemQuery[P]
 
 	// @TODO: add more useful funcs to this interface

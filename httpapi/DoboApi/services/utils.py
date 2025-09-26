@@ -17,7 +17,7 @@ def Singleton(cls):
     return get_instance
 
 
-def async_cache(ttl):
+def async_cache_timed(ttl):
     """
     Caches wrapped function's return value for given seconds
     :param ttl: time to live, in seconds
@@ -32,6 +32,28 @@ def async_cache(ttl):
 
             if item is None or (item[0] and item[0] + ttl < now):
                 cache['item'] = now, await fn(*args, **kwargs)
+
+            return cache['item'][1]
+
+        return _wrapped
+    return _decorator
+
+
+def cache_timed(ttl):
+    """
+    Caches wrapped function's return value for given seconds
+    :param ttl: time to live, in seconds
+    """
+    cache = {}
+
+    def _decorator(fn):
+        @wraps(fn)
+        def _wrapped(*args, **kwargs):
+            now = time()
+            item = cache.get('item')
+
+            if item is None or (item[0] and item[0] + ttl < now):
+                cache['item'] = now, fn(*args, **kwargs)
 
             return cache['item'][1]
 

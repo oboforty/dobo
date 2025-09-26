@@ -2,14 +2,14 @@ import asyncio
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 
-from dbobo import ServerNodeAsync, Table, int32, float32
+from dbobo import ServerNodeAsync
 from DoboApi.settings import settings
 from dbobo.node import NodeCommandWrapper
 
 
 class OboDBNodePool:
     def __init__(self):
-        size = settings.DB.pool_size
+        size = settings.DBClient.pool_size
         self._pool = asyncio.Queue(maxsize=size)
         self.size = size
 
@@ -17,8 +17,8 @@ class OboDBNodePool:
         for i in range(self.size):
             db = ServerNodeAsync(
                 host=f"{settings.DB.host}:{settings.DB.port}",
-                tls_key=settings.DB.tls_key,
-                tls_cert=settings.DB.tls_cert,
+                tls_key=settings.DBClient.tls_key,
+                tls_cert=settings.DBClient.tls_cert,
             )
 
             # TODO: should client join immediately or defer until 1st call?
@@ -27,7 +27,7 @@ class OboDBNodePool:
             await self._pool.put(db)
 
     @asynccontextmanager
-    async def acquire(self):
+    async def acquire(self) -> AsyncGenerator[ServerNodeAsync, None]:
         node = await self._pool.get()
         try:
             yield node
@@ -43,7 +43,7 @@ async def get_node() -> AsyncGenerator[NodeCommandWrapper, None]:
         yield NodeCommandWrapper(node)
 
 
-async def initialize():
+async def initialize_pool():
     global node_pool
     node_pool = OboDBNodePool()
     await node_pool.init()

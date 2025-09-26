@@ -38,10 +38,11 @@ const (
 type FindStatus = uint8
 
 const (
-	NOT_FOUND FindStatus = iota
+	FOUND_STATUS_UNKNOWN FindStatus = iota
 	FOUND_AT_MEM
 	FOUND_AT_BLOOM
 	FOUND_AT_SS
+	NOT_FOUND
 )
 
 func (q ItemQuery[K]) AsItem() *Item[K] {

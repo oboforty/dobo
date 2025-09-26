@@ -43,6 +43,7 @@ func (node *Node) handleCommands(conn net.Conn) {
 
 			continue
 		} else {
+			// TODO: defer this log and log with Table & key name included!
 			log.Printf("[Cmd] Running command: %s", cmdDescr.Name)
 		}
 

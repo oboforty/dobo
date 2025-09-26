@@ -25,10 +25,10 @@ func GetItem[P core.PartKeyTypes](table *lsm.LSMTreeTable[P], conn net.Conn, key
 	// }
 	if item == nil {
 		// @TODO: handle error
-		return nil
+		return SendError(GET_ITEM, int16(core.NOT_FOUND), conn)
 	}
 
-	return SendCommand(GET_ITEM, conn, item.Value)
+	return SendCommandResponse(GET_ITEM, conn, item.Value)
 }
 
 func PutItem[P core.PartKeyTypes](table *lsm.LSMTreeTable[P], conn net.Conn, key *P) error {
@@ -50,7 +50,7 @@ func PutItem[P core.PartKeyTypes](table *lsm.LSMTreeTable[P], conn net.Conn, key
 	// 	return err
 	// }
 
-	return SendCommand(PUT_ITEM, conn)
+	return SendCommandResponse(PUT_ITEM, conn)
 }
 
 // func UpdateItem[P core.PartKeyTypes](table *lsm.LSMTreeTable[P], conn net.Conn, key *P, value []byte) {

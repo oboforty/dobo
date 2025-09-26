@@ -8,7 +8,7 @@ import (
 
 const (
 	CMD_OK CommandType = iota + 1
-	CMD_ERROR
+	_RESERVED
 	NODE_INFO
 	LIST_TABLES
 

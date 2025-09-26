@@ -137,3 +137,7 @@ func (t *LSMTreeTable[P]) FlushMemToDisc() error {
 func (t *LSMTreeTable[P]) TableName() string {
 	return t.cfg.Name
 }
+
+func (t *LSMTreeTable[P]) TableInfo() *CfgTable {
+	return &t.cfg
+}

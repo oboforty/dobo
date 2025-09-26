@@ -6,6 +6,10 @@ workers_count = 1
 host = '127.0.0.1'
 port = 2480
 database = '' # not used for now
+
+[DBClient]
 tls_cert='/home/rajmund_csombordi/obodb/nodekey.crt'
 tls_key='/home/rajmund_csombordi/obodb/nodekey.key'
 pool_size=1
+metadata_cache_ttl=36000
+summary_cache_ttl=60
