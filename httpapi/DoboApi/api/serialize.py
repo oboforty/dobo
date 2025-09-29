@@ -1,5 +1,7 @@
 import base64
 import json
+import mimetypes
+import os
 
 from dbobo.serialize import (
     TypeHintTypes,
@@ -52,7 +54,7 @@ def string_type_to_type(type_name: str = None) -> TypeHintTypes:
 #     #     raise TypeError(f"Unsupported data type: {type_hint}")
 
 
-def str2bytes_with_string_type(value: str, type_hint_str: str) -> tuple[KeyTypes, bytes]:
+def convert_key_from_params(value: str, type_hint_str: str) -> tuple[KeyTypes, bytes]:
     """
     @TODO:  explain the need for this & stuff
             API <--> dbobo type conversion
@@ -72,3 +74,25 @@ def str2bytes_with_string_type(value: str, type_hint_str: str) -> tuple[KeyTypes
         bytes_value = convert_to_bytes(orig_value, type_hint=type_hint)
 
     return orig_value, bytes_value
+
+
+def get_file_meta(key, key_type, content_type=None):
+    if content_type == "*/*":
+        content_type = None
+
+    # smart guess file from extension
+    if key_type == "string" and "." in key:
+        filename, ext = os.path.splitext(key)
+
+        if not content_type:
+            content_type = mimetypes.guess_type(key)[0] or "application/octet-stream"
+    else:
+        filename = "download"
+        ext = ".dat"
+
+        if content_type:
+            ext = mimetypes.guess_extension(content_type) or ".dat"
+        else:
+            content_type = "application/octet-stream"
+
+    return f"{filename}{ext}", content_type

@@ -1,18 +1,9 @@
-import random
-
-from fastapi import Depends, APIRouter
 from starlette.requests import Request
 
-from DoboApi.api.mw import inject_db_conn
-
-bulk_router = APIRouter(
-    prefix='/tables/{table}/items',
-    tags=["items bulk"],
-    dependencies=[Depends(inject_db_conn)],
-)
+from DoboApi.api.items.router import router
 
 
-@bulk_router.get("/")
+@router.get("/")
 async def query_items(table: str, request: Request):
     """
     Query items
@@ -24,7 +15,7 @@ async def query_items(table: str, request: Request):
     }
 
 
-@bulk_router.put("/")
+@router.put("/")
 async def upsert_items(table: str, request: Request):
     """
     Bulk Upsert items
@@ -36,7 +27,7 @@ async def upsert_items(table: str, request: Request):
     }
 
 
-@bulk_router.patch("/")
+@router.patch("/")
 async def update_items(table: str, request: Request):
     """
     Bulk Update items
@@ -48,7 +39,7 @@ async def update_items(table: str, request: Request):
     }
 
 
-@bulk_router.delete("/")
+@router.delete("/")
 async def remove_items(table: str, request: Request):
     """
     Bulk Remove items OR truncate

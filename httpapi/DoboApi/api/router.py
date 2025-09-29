@@ -2,15 +2,13 @@ from fastapi.routing import APIRouter
 
 from . import docs
 from .tables.views import tables_router
-from .items.views import items_router
-from .items.views_bulk import bulk_router
+from .items.views.items import router as items_router
 
 api_router = APIRouter()
 
 
 api_router.include_router(tables_router)
 api_router.include_router(items_router)
-api_router.include_router(bulk_router)
 
 api_router.include_router(docs.router)
 

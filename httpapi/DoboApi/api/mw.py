@@ -26,15 +26,12 @@ async def inject_db_conn(
     if not table_name:
         table_name = request.query_params.get("table")
 
-    match request.method:
-        case "GET":
+    if not table_name and request.method != "GET":
+        try:
+            body = await request.json()
+            table_name = body.get("table")
+        except (ValueError, RequestValidationError):
             pass
-        case _:
-            try:
-                body = await request.json()
-                table_name = body.get("table")
-            except (ValueError, RequestValidationError):
-                pass
 
     request.state.node = node
     request.state.current_table = await get_table_metadata(table_name)
