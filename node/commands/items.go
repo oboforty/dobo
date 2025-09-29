@@ -35,6 +35,7 @@ func PutItem[P core.PartKeyTypes](table *lsm.LSMTreeTable[P], conn net.Conn, key
 	value, err := ioutils.ReadDynamic[uint32](conn)
 
 	if err != nil {
+		println("@@@ FOS ? ", err)
 		return err
 	}
 
@@ -50,7 +51,7 @@ func PutItem[P core.PartKeyTypes](table *lsm.LSMTreeTable[P], conn net.Conn, key
 	// 	return err
 	// }
 
-	return SendCommandResponse(PUT_ITEM, conn)
+	return SendCommandResponse(PUT_ITEM, conn, []byte{1})
 }
 
 // func UpdateItem[P core.PartKeyTypes](table *lsm.LSMTreeTable[P], conn net.Conn, key *P, value []byte) {
@@ -60,9 +61,11 @@ func PutItem[P core.PartKeyTypes](table *lsm.LSMTreeTable[P], conn net.Conn, key
 // 	fmt.Println("UPDATE:", item)
 // }
 
-func DeleteItem[P core.PartKeyTypes](table *lsm.LSMTreeTable[P], conn net.Conn, key *P) {
+func DeleteItem[P core.PartKeyTypes](table *lsm.LSMTreeTable[P], conn net.Conn, key *P) error {
 	table.Delete(*key)
 	fmt.Println("DELETE:", *key)
+
+	return SendCommandResponse(DEL_ITEM, conn, []byte{1})
 }
 
 func HandleItemCommand[T core.PartKeyTypes](table *lsm.LSMTreeTable[T], conn net.Conn, cmd CommandType) error {

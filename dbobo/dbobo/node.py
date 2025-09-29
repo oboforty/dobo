@@ -153,20 +153,22 @@ class NodeCommandWrapper:
 
     async def list_tables(self) -> list[dict]:
         tables_json, = await self.conn.request(
-            cmd=4
+            cmd=4,
+            expected_payloads=1
         )
 
         return json.loads(tables_json)
 
     async def create_table(self, cfg: dict) -> dict:
-        asd, = await self.conn.request(
+        resp, = await self.conn.request(
             cmd=11,
             payload_format=1, # cfg type = json
             dynamic_payload=[
                 json.dumps(cfg).encode('ascii')
-            ]
+            ],
+            expected_payloads=1
         )
-        print("Create table response: ", asd)
+        print("Create table response: ", resp)
 
     async def get_item(self, table: str, key: bytes) -> Item:
         value, = await self.conn.request(
@@ -179,12 +181,19 @@ class NodeCommandWrapper:
         return Item(key=key, value=value)
 
     async def put_item(self, table: str, key: bytes, value: bytes):
-        await self.conn.request(
+        resp, = await self.conn.request(
             cmd=21,
             table=table,
-            dynamic_payload=[
-                key,
-                value
-            ],
-            expected_payloads=0
+            dynamic_payload=[key, value],
+            expected_payloads=1
         )
+        print("put item response: ", resp)
+
+    async def delete_item(self, table: str, key: bytes):
+        resp, = await self.conn.request(
+            cmd=23,
+            table=table,
+            dynamic_payload=[key],
+            expected_payloads=1
+        )
+        print("delete item response: ", resp)

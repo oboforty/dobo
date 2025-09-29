@@ -5,18 +5,10 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="f89a8abc-8fa8-4f4e-8197-84b29f0e3ef7" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/../httpapi/DoboApi/api/items/router.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/../httpapi/DoboApi/api/items/views/__init__.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/../httpapi/DoboApi/api/items/views/base64.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/../httpapi/DoboApi/api/items/views/file.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../httpapi/DoboApi/api/items/views.py" beforeDir="false" afterPath="$PROJECT_DIR$/../httpapi/DoboApi/api/items/views/items.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../httpapi/DoboApi/api/items/views_bulk.py" beforeDir="false" afterPath="$PROJECT_DIR$/../httpapi/DoboApi/api/items/views/bulk.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../httpapi/DoboApi/api/mw.py" beforeDir="false" afterPath="$PROJECT_DIR$/../httpapi/DoboApi/api/mw.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../httpapi/DoboApi/api/router.py" beforeDir="false" afterPath="$PROJECT_DIR$/../httpapi/DoboApi/api/router.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../httpapi/DoboApi/api/serialize.py" beforeDir="false" afterPath="$PROJECT_DIR$/../httpapi/DoboApi/api/serialize.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../httpapi/pyproject.toml" beforeDir="false" afterPath="$PROJECT_DIR$/../httpapi/pyproject.toml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../httpapi/uv.lock" beforeDir="false" afterPath="$PROJECT_DIR$/../httpapi/uv.lock" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/dbobo/node.py" beforeDir="false" afterPath="$PROJECT_DIR$/dbobo/node.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../httpapi/DoboApi/api/items/views/items.py" beforeDir="false" afterPath="$PROJECT_DIR$/../httpapi/DoboApi/api/items/views/items.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../node/commands/items.go" beforeDir="false" afterPath="$PROJECT_DIR$/../node/commands/items.go" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />

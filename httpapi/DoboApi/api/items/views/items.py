@@ -84,17 +84,26 @@ async def put_item(
 
 @router.patch("/{pkey}")
 async def update_item(pkey, table: str):
-
-    return {
-        'pkey': pkey,
-        'table': table
-    }
+    raise HTTPException(status_code=405, detail="Patch not implemented yet")
 
 
 @router.delete("/{pkey}")
-async def remove_item(pkey, table: str):
+async def delete_item(pkey, request: Request):
+    table = request.state.current_table
+    node: NodeCommandWrapper = request.state.node
+
+    # Param validation
+    if not table:
+        raise HTTPException(status_code=404, detail="Table not found")
+    key, key_bytes = convert_key_from_params(pkey, table['key_type'])
+
+    # Remove item
+    try:
+        await node.delete_item(table['name'], key_bytes)
+    except ItemNotFoundError:
+        raise HTTPException(status_code=404, detail="Item not found")
 
     return {
         'pkey': pkey,
-        'table': table
+        'table': table['name']
     }
