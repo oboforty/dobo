@@ -15,7 +15,6 @@ const (
 	// @TODO: discover nodes, share info, rebalance token ring,
 	// REPLICATE-TABLE,
 	// CREATE-PARTITION, DELETE-PARTITION,
-
 )
 
 type Node interface {

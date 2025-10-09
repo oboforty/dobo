@@ -23,7 +23,7 @@ func GetItem[P core.PartKeyTypes](table *lsm.LSMTreeTable[P], conn net.Conn, key
 	// if err != nil {
 	// 	fmt.Printf("[%s] write error: %s (Get Item)", table.TableName(), err)
 	// }
-	if item == nil {
+	if item == nil || item.Deleted {
 		// @TODO: handle error
 		return SendError(GET_ITEM, int16(core.NOT_FOUND), conn)
 	}
@@ -63,7 +63,6 @@ func PutItem[P core.PartKeyTypes](table *lsm.LSMTreeTable[P], conn net.Conn, key
 
 func DeleteItem[P core.PartKeyTypes](table *lsm.LSMTreeTable[P], conn net.Conn, key *P) error {
 	table.Delete(*key)
-	fmt.Println("DELETE:", *key)
 
 	return SendCommandResponse(DEL_ITEM, conn, []byte{1})
 }

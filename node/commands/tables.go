@@ -19,11 +19,10 @@ const (
 	UPDATE_TABLE
 	DROP_TABLE
 	DESCRIBE_TABLE
-	// @TODO:
-	// SETCONFIG,
-	// CREATE-TABLE, DELETE-TABLE,
-	// BALANCE-INDEX,
-	// REPARTITION-TABLE
+	FLUSH_TABLE
+	// SETCONFIG
+	BALANCE_INDEX
+	REPARTITION_TABLE
 )
 
 func GetTable(table lsm.LSMTreeTableInterface, conn net.Conn) error {
@@ -106,6 +105,16 @@ func ListTables(node Node, conn net.Conn) error {
 	return SendCommandResponse(LIST_TABLES, conn, tablesJson)
 }
 
+func FlushTable(table lsm.LSMTreeTableInterface, conn net.Conn) error {
+	err := table.FlushMemToDisc()
+
+	if err != nil {
+		return err
+	}
+
+	return SendCommandResponse(FLUSH_TABLE, conn)
+}
+
 func HandleTableCommand(table lsm.LSMTreeTableInterface, conn net.Conn, cmd CommandType) error {
 	var err error
 
@@ -120,6 +129,8 @@ func HandleTableCommand(table lsm.LSMTreeTableInterface, conn net.Conn, cmd Comm
 	// 	SetConfigTable(table, conn)
 	case DROP_TABLE:
 		err = DropTable(table, conn)
+	case FLUSH_TABLE:
+		err = FlushTable(table, conn)
 	default:
 		return fmt.Errorf("invalid table command %d", cmd)
 	}

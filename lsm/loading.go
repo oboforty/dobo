@@ -2,7 +2,7 @@ package lsm
 
 import (
 	"fmt"
-	"log"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -77,21 +77,21 @@ func (cfg *CfgTable) WriteToDisc() error {
 
 	err := core.EnsurePath(filepath.Dir(tablePath))
 	if err != nil {
-		log.Fatalf("[Cfg] couldn't create directories: %s (%s)", err, tablePath)
+		slog.Error(fmt.Sprintf("[%s] config error: couldn't create directories: %s (%s)", cfg.Name, err, tablePath))
 		return err
 	}
 
 	data, err := toml.Marshal(cfg)
 
 	if err != nil {
-		log.Fatalf("[Cfg] toml serialize error: %s (%s)", err, tablePath)
+		slog.Error(fmt.Sprintf("[%s] config toml serialize error: %s (%s)", cfg.Name, err, tablePath))
 		return err
 	}
 
 	err = os.WriteFile(tablePath, data, 0644)
 
 	if err != nil {
-		log.Fatalf("[Cfg] write error: %s (%s)", err, tablePath)
+		slog.Error(fmt.Sprintf("[%s] config write error: %s (%s)", cfg.Name, err, tablePath))
 		return err
 	}
 
@@ -103,7 +103,7 @@ func ReadTableConfig(dbPath string) (*CfgTable, error) {
 	cfgContent, err := os.ReadFile(tablePath)
 
 	if err != nil {
-		log.Fatalf("[Cfg] not found file: %s (%s)", err, tablePath)
+		slog.Error(fmt.Sprintf("[Cfg] config file not found: %s (%s)", err, tablePath))
 		return nil, err
 	}
 
@@ -111,7 +111,7 @@ func ReadTableConfig(dbPath string) (*CfgTable, error) {
 
 	err = toml.Unmarshal(cfgContent, cfgiTable)
 	if err != nil {
-		log.Fatalf("[Cfg] parse error: %s (%s)", err, tablePath)
+		slog.Error(fmt.Sprintf("[%s] config file not found: %s (%s)", err, tablePath))
 		return nil, err
 	}
 
@@ -141,7 +141,8 @@ func (t *LSMTreeTable[P]) loadSSTables() error {
 			t.partKeyTypeInfo,
 			genId,
 		)
-		log.Printf("[SST] loading table %s from %s", t.cfg.Name, sst.FileBase())
+
+		slog.Info(fmt.Sprintf("[%s] loading from %s", t.cfg.Name, sst.FileBase()))
 		sst.LoadFromDisc()
 
 		t.SSTables = append(t.SSTables, sst)
@@ -155,6 +156,7 @@ type LSMTreeTableInterface interface {
 	TableInfo() *CfgTable
 	// Get(partKey P) *core.ItemQuery[P]
 
+	FlushMemToDisc() error
 	// @TODO: add more useful funcs to this interface
 }
 

@@ -6,8 +6,6 @@
   <component name="ChangeListManager">
     <list default="true" id="f89a8abc-8fa8-4f4e-8197-84b29f0e3ef7" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/dbobo/node.py" beforeDir="false" afterPath="$PROJECT_DIR$/dbobo/node.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../httpapi/DoboApi/api/items/views/items.py" beforeDir="false" afterPath="$PROJECT_DIR$/../httpapi/DoboApi/api/items/views/items.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../node/commands/items.go" beforeDir="false" afterPath="$PROJECT_DIR$/../node/commands/items.go" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />

@@ -1,10 +1,13 @@
 package node
 
 import (
+	"context"
 	"fmt"
-	"log"
+	"log/slog"
 	"os"
+	"os/signal"
 	"path/filepath"
+	"syscall"
 
 	"github.com/oboforty/dobo/lsm"
 	"github.com/oboforty/dobo/node/socket"
@@ -27,8 +30,7 @@ type CfgNode struct {
 func NewFromDisc(path string) (*Node, error) {
 	cfg, err := ReadNodeCfgFile(path)
 	if err != nil {
-		log.Fatalf("[Cfg] parse error: %s", err)
-		return nil, err
+		return nil, fmt.Errorf("parse error: %s", err)
 	}
 
 	// apply defaults
@@ -44,14 +46,12 @@ func NewFromDisc(path string) (*Node, error) {
 
 	node.sock, err = socket.New(&cfg.Tcp, node.handleCommands)
 	if err != nil {
-		log.Fatalf("[Node] socket setup error: %s", err)
-		return nil, err
+		return nil, fmt.Errorf("socket error: %s", err)
 	}
 
 	tableFiles, err := os.ReadDir(cfg.DbPath)
 	if err != nil {
-		log.Fatalf("[Node] list tables error: %s", err)
-		return nil, err
+		return nil, fmt.Errorf("list tables dir error: %s", err)
 	}
 
 	for _, file := range tableFiles {
@@ -79,8 +79,31 @@ func (node *Node) ListTables() map[string]lsm.LSMTreeTableInterface {
 	return node.Tables
 }
 
-func (node *Node) Listen() {
+func (node *Node) RunServer() {
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	// fmt.Println("Running. Press Ctrl+C to exit...")
+
 	node.sock.Listen()
+
+	<-ctx.Done()
+	node.CloseServer()
+}
+
+func (node *Node) CloseServer() {
+	tt := node.ListTables()
+
+	// has_err := false
+
+	for _, table := range tt {
+		err := table.FlushMemToDisc()
+
+		if err != nil {
+			//("[%s] flush error: %s", table.TableName(), err)
+
+		}
+	}
 }
 
 func (node *Node) GetDBPath() string {
@@ -92,13 +115,13 @@ func (node *Node) LoadTableFromDisc(tableName string) {
 	tree, err := lsm.NewFromDisc(filepath.Join(node.DbPath, tableName))
 
 	if err != nil {
-		log.Fatalf("[Node] load error: %s", err)
+		slog.Error(fmt.Sprintf("[%s] load error: %s", tableName, err))
 	}
 
 	node.Tables[tree.TableName()] = tree
 
 	// @TODO: print core stats on size & summary
-	log.Printf("[Node] loaded table %s", tree.TableName())
+	slog.Info(fmt.Sprintf("[%s] loaded from disc", tableName))
 }
 
 func ReadNodeCfgFile(path string) (*CfgNode, error) {

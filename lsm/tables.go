@@ -1,7 +1,8 @@
 package lsm
 
 import (
-	"log"
+	"fmt"
+	"log/slog"
 
 	"github.com/oboforty/dobo/lsm/core"
 	"github.com/oboforty/dobo/lsm/memtable"
@@ -112,7 +113,7 @@ func (t *LSMTreeTable[P]) createMemtable() {
 }
 
 func (t *LSMTreeTable[P]) FlushMemToDisc() error {
-	log.Println("[SST] Flushing mem to disc, size: ", t.MemTable.ByteSize())
+	slog.Info(fmt.Sprintf(fmt.Sprintf("[%s] flushing mem to disc, size: %s", t.cfg.Name, t.MemTable.ByteSize())))
 
 	memtOld := t.MemTable
 	t.createMemtable()

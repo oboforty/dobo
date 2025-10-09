@@ -3,7 +3,7 @@ package node
 import (
 	"fmt"
 	"io"
-	"log"
+	"log/slog"
 	"net"
 
 	"github.com/oboforty/dobo/lsm"
@@ -19,7 +19,7 @@ func (node *Node) handleCommands(conn net.Conn) {
 		_, err := conn.Read(b)
 		if err != nil {
 			if err != io.EOF {
-				log.Printf("[Cmd] Read error: %s", err)
+				slog.Error(fmt.Sprintf("[Cmd] Read error: %s", err))
 			}
 
 			// TODO: handle disconnect
@@ -39,12 +39,12 @@ func (node *Node) handleCommands(conn net.Conn) {
 				println("HUHH ???", err)
 			}
 
-			log.Printf("[Cmd] Invalid command: %d. Remaining bytes: %v", cmd, remBytes)
+			slog.Error(fmt.Sprintf("[Cmd] Invalid command: %d. Remaining bytes: %v", cmd, remBytes))
 
 			continue
 		} else {
 			// TODO: defer this log and log with Table & key name included!
-			log.Printf("[Cmd] Running command: %s", cmdDescr.Name)
+			slog.Info(fmt.Sprintf("[Cmd] Running command: %s", cmdDescr.Name))
 		}
 
 		// Load LSM Table if it's needed
@@ -52,20 +52,20 @@ func (node *Node) handleCommands(conn net.Conn) {
 			err = commands.HandleNodeCommand(node, conn, cmd)
 
 			if err != nil {
-				log.Printf("[Cmd] error: %s (%s)", cmdDescr.Name, err)
+				slog.Error(fmt.Sprintf("[Cmd] error: %s (%s)", cmdDescr.Name, err))
 			}
 			continue
 		}
 
 		err = ioutils.ReadDynamicValue[uint8](conn, &tableName)
 		if err != nil {
-			log.Printf("[Cmd] TableName parsing error: %s (%s)", err, cmdDescr.Name)
+			slog.Error(fmt.Sprintf("[Cmd] TableName parsing error: %s (%s)", err, cmdDescr.Name))
 			continue
 		}
 
 		tableIF, ok = node.Tables[tableName]
 		if !ok {
-			log.Printf("[%s] Table does not exist: %s (%s)", tableName, err, cmdDescr.Name)
+			slog.Error(fmt.Sprintf("[%s] Table does not exist: %s (%s)", tableName, err, cmdDescr.Name))
 			continue
 		}
 
@@ -93,7 +93,7 @@ func (node *Node) handleCommands(conn net.Conn) {
 		}
 
 		if err != nil {
-			log.Printf("[%s] error: %s (%s)", tableName, err, cmdDescr.Name)
+			slog.Error(fmt.Sprintf("[%s] error: %s (%s)", tableName, err, cmdDescr.Name))
 			continue
 		}
 	}

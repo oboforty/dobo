@@ -3,9 +3,8 @@ package socket
 import (
 	"crypto/rand"
 	"crypto/tls"
-	"crypto/x509"
 	"fmt"
-	"log"
+	"log/slog"
 	"net"
 )
 
@@ -37,7 +36,7 @@ type TcpSocket struct {
 func New(cfg *CfgTcp, hc clientHandler) (*TcpSocket, error) {
 	cert, err := tls.LoadX509KeyPair(cfg.Cert, cfg.PrivKey)
 	if err != nil {
-		log.Fatalf("[Server] loadkey error: %s", err)
+		slog.Error(fmt.Sprintf("[Server] loadkey error: %s", err))
 		return nil, err
 	}
 
@@ -55,26 +54,27 @@ func (t *TcpSocket) Listen() {
 	service := fmt.Sprintf("%s:%d", t.cfg.Host, t.cfg.Port)
 	listener, err := tls.Listen("tcp", service, t.tlsCfg)
 	if err != nil {
-		log.Fatalf("[Server] listen error: %s", err)
+		slog.Error(fmt.Sprintf("[Server] listen error: %s", err))
 	}
-	log.Print("[Server] listening at ", service)
+	slog.Info(fmt.Sprintf("[Server] listening at %s", service))
 
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
-			log.Printf("[Server] connection error: %s", err)
+			slog.Info(fmt.Sprintf("[Server] connection error: %s", err))
 			break
 		}
 
 		defer conn.Close()
-		log.Printf("[Server] new connection %s", conn.RemoteAddr())
+		slog.Info(fmt.Sprintf("[Server] new connection %s", conn.RemoteAddr()))
 		tlscon, ok := conn.(*tls.Conn)
 		if ok {
 			// log.Print("ok=true")
 			state := tlscon.ConnectionState()
-			for _, v := range state.PeerCertificates {
-				log.Print(x509.MarshalPKIXPublicKey(v.PublicKey))
-			}
+			slog.Info(fmt.Sprintf("       %s", state))
+			// for _, v := range state.PeerCertificates {
+			// 	slog.Info(fmt.Sprintf("        - key: %s", x509.MarshalPKIXPublicKey(v.PublicKey))
+			// }
 		}
 
 		go t.handleClient(conn)
