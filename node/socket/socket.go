@@ -9,6 +9,7 @@ import (
 	"net"
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
 )
 
@@ -68,20 +69,25 @@ func (t *TcpSocket) RunServer() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM, syscall.SIGABRT, syscall.SIGINT)
 	defer stop()
 
-	// handle dispose
+	// handle graceful node disposal
+	var shutdownWg sync.WaitGroup
+	shutdownWg.Add(1)
 	go func() {
 		<-ctx.Done()
 		listener.Close()
 		t.handleShutdown(nil)
+		shutdownWg.Done()
 	}()
 
+	// listen on TCP & handle commands
+acceptLoop:
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
 			select {
 			case <-ctx.Done():
 				slog.Info(fmt.Sprintf("[Server] shutting down (%s)", err))
-				return
+				break acceptLoop
 			default:
 				slog.Info(fmt.Sprintf("[Server] connection error: %s", err))
 				continue
@@ -102,4 +108,8 @@ func (t *TcpSocket) RunServer() {
 
 		go t.handleClient(conn)
 	}
+
+	// Wait for shutdown handler to complete before returning
+	shutdownWg.Wait()
+	slog.Info("[Server] bye")
 }

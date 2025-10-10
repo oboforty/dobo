@@ -54,9 +54,9 @@ func (ss *SSTable[P]) WriteToDisc(table IterableTable[P]) error {
 	ss.Statistics["total_key_size"] = int(table.TotalKeySize())
 	ss.Statistics["avg_key_size"] = int(avgKeySize)
 
-	println("@@>> ", table.Len(), table.TotalKeySize(), table.TotalValueSize())
-	println("@@> ", ss.MaxSumSize, avgKeySize, ss.MinIdxInterval)
-	println("--------")
+	// println("@@>> ", table.Len(), table.TotalKeySize(), table.TotalValueSize())
+	// println("@@> ", ss.MaxSumSize, avgKeySize, ss.MinIdxInterval)
+	// println("--------")
 
 	// Summary file info
 	// index file entries / summary file entries (needed to abide the max size)
@@ -125,8 +125,9 @@ func (ss *SSTable[P]) WriteToDisc(table IterableTable[P]) error {
 			ss.sparseIndex = append(ss.sparseIndex, idx)
 		}
 
-		println(keyLength, node.PartKey, uint32(len(node.Value)))
-		println(node.Value)
+		// println(keyLength, node.PartKey, uint32(len(node.Value)))
+		// println(node.Value)
+
 		// Write Data file
 		buf := new(bytes.Buffer)
 		binary.Write(buf, binary.BigEndian, keyLength)
