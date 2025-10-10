@@ -1,11 +1,15 @@
 package socket
 
 import (
+	"context"
 	"crypto/rand"
 	"crypto/tls"
 	"fmt"
 	"log/slog"
 	"net"
+	"os"
+	"os/signal"
+	"syscall"
 )
 
 type CfgTcp struct {
@@ -26,14 +30,16 @@ func (cfg *CfgTcp) Defaults() {
 }
 
 type clientHandler func(net.Conn)
+type shutdownHandler func(net.Conn)
 
 type TcpSocket struct {
-	cfg          CfgTcp
-	tlsCfg       *tls.Config
-	handleClient clientHandler
+	cfg            CfgTcp
+	tlsCfg         *tls.Config
+	handleClient   clientHandler
+	handleShutdown shutdownHandler
 }
 
-func New(cfg *CfgTcp, hc clientHandler) (*TcpSocket, error) {
+func New(cfg *CfgTcp, hcli clientHandler, hshutdown shutdownHandler) (*TcpSocket, error) {
 	cert, err := tls.LoadX509KeyPair(cfg.Cert, cfg.PrivKey)
 	if err != nil {
 		slog.Error(fmt.Sprintf("[Server] loadkey error: %s", err))
@@ -41,16 +47,17 @@ func New(cfg *CfgTcp, hc clientHandler) (*TcpSocket, error) {
 	}
 
 	sock := &TcpSocket{
-		cfg:          *cfg,
-		tlsCfg:       &tls.Config{Certificates: []tls.Certificate{cert}},
-		handleClient: hc,
+		cfg:            *cfg,
+		tlsCfg:         &tls.Config{Certificates: []tls.Certificate{cert}},
+		handleClient:   hcli,
+		handleShutdown: hshutdown,
 	}
 	sock.tlsCfg.Rand = rand.Reader
 
 	return sock, nil
 }
 
-func (t *TcpSocket) Listen() {
+func (t *TcpSocket) RunServer() {
 	service := fmt.Sprintf("%s:%d", t.cfg.Host, t.cfg.Port)
 	listener, err := tls.Listen("tcp", service, t.tlsCfg)
 	if err != nil {
@@ -58,11 +65,27 @@ func (t *TcpSocket) Listen() {
 	}
 	slog.Info(fmt.Sprintf("[Server] listening at %s", service))
 
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM, syscall.SIGABRT, syscall.SIGINT)
+	defer stop()
+
+	// handle dispose
+	go func() {
+		<-ctx.Done()
+		listener.Close()
+		t.handleShutdown(nil)
+	}()
+
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
-			slog.Info(fmt.Sprintf("[Server] connection error: %s", err))
-			break
+			select {
+			case <-ctx.Done():
+				slog.Info(fmt.Sprintf("[Server] shutting down (%s)", err))
+				return
+			default:
+				slog.Info(fmt.Sprintf("[Server] connection error: %s", err))
+				continue
+			}
 		}
 
 		defer conn.Close()
@@ -71,7 +94,7 @@ func (t *TcpSocket) Listen() {
 		if ok {
 			// log.Print("ok=true")
 			state := tlscon.ConnectionState()
-			slog.Info(fmt.Sprintf("       %s", state))
+			slog.Info(fmt.Sprintf("       %v", state))
 			// for _, v := range state.PeerCertificates {
 			// 	slog.Info(fmt.Sprintf("        - key: %s", x509.MarshalPKIXPublicKey(v.PublicKey))
 			// }

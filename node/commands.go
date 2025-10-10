@@ -98,3 +98,21 @@ func (node *Node) handleCommands(conn net.Conn) {
 		}
 	}
 }
+
+func (node *Node) onShutdown(conn net.Conn) {
+	slog.Info("[Node] disposing resources.")
+
+	tt := node.ListTables()
+
+	for _, table := range tt {
+		ok, err := table.FlushMemToDisc()
+
+		if err != nil {
+			slog.Error(fmt.Sprintf("[%s] flush error: %s", table.TableName(), err))
+		} else if ok {
+			slog.Info(fmt.Sprintf("[%s] flushed", table.TableName()))
+		} else {
+			slog.Warn(fmt.Sprintf("[%s] empty flush", table.TableName()))
+		}
+	}
+}

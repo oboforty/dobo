@@ -65,6 +65,9 @@ func (cfg *CfgTable) ApplyDefaults() {
 	if cfg.SSTable.MaxIdxInterval == 0 {
 		cfg.SSTable.MaxIdxInterval = tableDefaults.SSTable.MaxIdxInterval
 	}
+	if cfg.SSTable.MaxSumSize == 0 {
+		cfg.SSTable.MaxSumSize = tableDefaults.SSTable.MaxSumSize
+	}
 
 	// BF defaults
 	if cfg.SSTable.BloomFilter.FalsePositiveRate == 0 {
@@ -156,7 +159,7 @@ type LSMTreeTableInterface interface {
 	TableInfo() *CfgTable
 	// Get(partKey P) *core.ItemQuery[P]
 
-	FlushMemToDisc() error
+	FlushMemToDisc() (bool, error)
 	// @TODO: add more useful funcs to this interface
 }
 

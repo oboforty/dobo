@@ -25,6 +25,10 @@ const (
 	REPARTITION_TABLE
 )
 
+const (
+	CMD_ERR_TABLE_EMPTY CommandErrorCode = iota + 1
+)
+
 func GetTable(table lsm.LSMTreeTableInterface, conn net.Conn) error {
 	// TODO: @later: make client request return format? for now only JSON is supported
 
@@ -106,13 +110,18 @@ func ListTables(node Node, conn net.Conn) error {
 }
 
 func FlushTable(table lsm.LSMTreeTableInterface, conn net.Conn) error {
-	err := table.FlushMemToDisc()
+	ok, err := table.FlushMemToDisc()
 
 	if err != nil {
+		// flush error
 		return err
+	} else if ok {
+		// succesful flush
+		return SendCommandResponse(FLUSH_TABLE, conn)
+	} else {
+		// empty table
+		return SendError(FLUSH_TABLE, CMD_ERR_TABLE_EMPTY, conn)
 	}
-
-	return SendCommandResponse(FLUSH_TABLE, conn)
 }
 
 func HandleTableCommand(table lsm.LSMTreeTableInterface, conn net.Conn, cmd CommandType) error {

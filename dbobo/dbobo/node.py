@@ -28,14 +28,20 @@ class ItemNotFoundError(RequestError):
 class ServerNodeAsync:
     def __init__(self, host: str, *, tls_cert: str, tls_key: str):
         ss = host.split(":")
-        self.tls_cert = tls_cert
-        self.tls_key = tls_key
+
+        self.ssl_context = ssl.create_default_context(ssl.Purpose.SERVER_AUTH)
+        self.ssl_context.load_cert_chain(certfile=tls_cert, keyfile=tls_key)
+        self.ssl_context.check_hostname = False
+        self.ssl_context.verify_mode = ssl.CERT_NONE # @TODO...
 
         self.host: str = ss[0]
         self.port: int = int(ss[1]) if len(ss) > 1 else 2480
 
         self.reader: StreamReader | None = None
         self.writer: StreamWriter | None = None
+
+        self.retries = 10
+        self.reconnect_delay = 1
 
     async def __aenter__(self) -> 'NodeCommandWrapper':
         await self.connect()
@@ -46,12 +52,7 @@ class ServerNodeAsync:
         await self.disconnect()
 
     async def connect(self) -> None:
-        ssl_context = ssl.create_default_context(ssl.Purpose.SERVER_AUTH)
-        ssl_context.load_cert_chain(certfile=self.tls_cert, keyfile=self.tls_key)
-        ssl_context.check_hostname = False
-        ssl_context.verify_mode = ssl.CERT_NONE
-
-        self.reader, self.writer = await asyncio.open_connection(self.host, self.port, ssl=ssl_context)
+        self.reader, self.writer = await asyncio.open_connection(self.host, self.port, ssl=self.ssl_context)
 
     async def disconnect(self) -> None:
         #TODO: send BYE signal?
@@ -97,47 +98,58 @@ class ServerNodeAsync:
         payload_format: int = None,
         dynamic_payload: list[bytes] = None,
         expected_payloads: int = 1
-    ) -> tuple[bytes, ...]:
-        # TODO: wrap in exception
+    ) -> tuple[bytes, ...] | None:
+        # TODO: retries? does the aio lib implement it?
 
-        # Request
-        self.writer.write(struct.pack("!B", cmd))
-        if table:
-            self.write_dynamic(table.encode('ascii'), recv_kl=1)
+        try:
+            # Request
+            self.writer.write(struct.pack("!B", cmd))
+            if table:
+                self.write_dynamic(table.encode('ascii'), recv_kl=1)
 
-        if payload_format:
-            self.writer.write(struct.pack("!B", payload_format))
+            if payload_format:
+                self.writer.write(struct.pack("!B", payload_format))
 
-        if dynamic_payload:
-            for data in dynamic_payload:
-                self.write_dynamic(data, recv_kl=4)
+            if dynamic_payload:
+                for data in dynamic_payload:
+                    self.write_dynamic(data, recv_kl=4)
 
-        await self.writer.drain()
+            await self.writer.drain()
 
-        # Response
-        resp_cmd: int = struct.unpack("!B", await self.reader.read(1))[0]
-        resp_ok: int = struct.unpack("!B", await self.reader.read(1))[0]
+            # Response
+            resp_cmd: int = struct.unpack("!B", await self.reader.read(1))[0]
+            resp_ok: int = struct.unpack("!B", await self.reader.read(1))[0]
 
-        if not resp_ok:
-            err_code: int = struct.unpack("!B", await self.reader.read(1))[0]
+            if not resp_ok:
+                err_code: int = struct.unpack("!B", await self.reader.read(1))[0]
 
-            # Handle error
-            # TODO: refine err reporting...
-            errmsg = await self.recv_dynamic()
-            if errmsg == b'??':
-                errmsg = f"unknown error"
+                # Handle error
+                # TODO: refine err reporting...
+                errmsg = await self.recv_dynamic()
+                if errmsg == b'??':
+                    errmsg = f"unknown error"
+                else:
+                    errmsg = json.loads(errmsg)
+
+                if err_code == 4:
+                    raise ItemNotFoundError(resp_cmd, err_code, errmsg)
+                else:
+                    raise RequestError(resp_cmd, err_code, errmsg)
             else:
-                errmsg = json.loads(errmsg)
+                resp_payloads: list[bytes] = []
+                for i in range(expected_payloads):
+                    resp_payloads.append(await self.recv_dynamic())
+                return tuple(resp_payloads)
 
-            if err_code == 4:
-                raise ItemNotFoundError(resp_cmd, err_code, errmsg)
-            else:
-                raise RequestError(resp_cmd, err_code, errmsg)
-        else:
-            resp_payloads: list[bytes] = []
-            for i in range(expected_payloads):
-                resp_payloads.append(await self.recv_dynamic())
-            return tuple(resp_payloads)
+        except asyncio.CancelledError:
+            # TODO: Add logging error
+            print("Connection task cancelled.")
+            pass
+        except (ConnectionResetError, ConnectionRefusedError, OSError) as e:
+            await asyncio.sleep(self.reconnect_delay)
+        except Exception as e:
+            print(f"Unexpected error: {e}")
+            await asyncio.sleep(self.reconnect_delay)
 
 
 @dataclasses.dataclass

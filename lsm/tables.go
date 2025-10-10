@@ -112,8 +112,14 @@ func (t *LSMTreeTable[P]) createMemtable() {
 	}
 }
 
-func (t *LSMTreeTable[P]) FlushMemToDisc() error {
-	slog.Info(fmt.Sprintf(fmt.Sprintf("[%s] flushing mem to disc, size: %s", t.cfg.Name, t.MemTable.ByteSize())))
+func (t *LSMTreeTable[P]) FlushMemToDisc() (bool, error) {
+	// if t.MemTable.ByteSize() == 0 {
+	if t.MemTable.Len() == 0 {
+		// log skipped mem?
+		return false, nil
+	}
+
+	slog.Info(fmt.Sprintf("[%s] flushing mem to disc, size: %d", t.cfg.Name, t.MemTable.ByteSize()))
 
 	memtOld := t.MemTable
 	t.createMemtable()
@@ -132,7 +138,12 @@ func (t *LSMTreeTable[P]) FlushMemToDisc() error {
 
 	ss.Statistics["flushed_at_mem_size"] = int(memtOld.ByteSize())
 
-	return ss.WriteToDisc(memtOld)
+	// @TODO: return flush statistics?
+	err := ss.WriteToDisc(memtOld)
+
+	slog.Info(fmt.Sprintf("[%s] flushing complete, size: %d", t.cfg.Name, memtOld.ByteSize()))
+
+	return err == nil, err
 }
 
 func (t *LSMTreeTable[P]) TableName() string {

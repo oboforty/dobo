@@ -7,6 +7,7 @@ import (
 )
 
 type CommandType = byte
+type CommandErrorCode = int16
 
 type CommandDescription struct {
 	Name string
@@ -54,7 +55,7 @@ func SendCommandResponse(cmd CommandType, writer io.Writer, payloads ...[]byte) 
 	return nil
 }
 
-func SendError(cmd CommandType, errCode int16, writer io.Writer, payloads ...[]byte) error {
+func SendError(cmd CommandType, errCode CommandErrorCode, writer io.Writer, payloads ...[]byte) error {
 	_, err := writer.Write([]byte{cmd, 0, byte(errCode)})
 	if err != nil {
 		return err

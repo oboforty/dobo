@@ -25,7 +25,7 @@ func GetItem[P core.PartKeyTypes](table *lsm.LSMTreeTable[P], conn net.Conn, key
 	// }
 	if item == nil || item.Deleted {
 		// @TODO: handle error
-		return SendError(GET_ITEM, int16(core.NOT_FOUND), conn)
+		return SendError(GET_ITEM, CommandErrorCode(core.NOT_FOUND), conn)
 	}
 
 	return SendCommandResponse(GET_ITEM, conn, item.Value)

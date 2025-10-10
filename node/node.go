@@ -1,13 +1,10 @@
 package node
 
 import (
-	"context"
 	"fmt"
 	"log/slog"
 	"os"
-	"os/signal"
 	"path/filepath"
-	"syscall"
 
 	"github.com/oboforty/dobo/lsm"
 	"github.com/oboforty/dobo/node/socket"
@@ -44,7 +41,7 @@ func NewFromDisc(path string) (*Node, error) {
 		Tables: make(map[string]lsm.LSMTreeTableInterface),
 	}
 
-	node.sock, err = socket.New(&cfg.Tcp, node.handleCommands)
+	node.sock, err = socket.New(&cfg.Tcp, node.handleCommands, node.onShutdown)
 	if err != nil {
 		return nil, fmt.Errorf("socket error: %s", err)
 	}
@@ -79,31 +76,8 @@ func (node *Node) ListTables() map[string]lsm.LSMTreeTableInterface {
 	return node.Tables
 }
 
-func (node *Node) RunServer() {
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-	defer stop()
-
-	// fmt.Println("Running. Press Ctrl+C to exit...")
-
-	node.sock.Listen()
-
-	<-ctx.Done()
-	node.CloseServer()
-}
-
-func (node *Node) CloseServer() {
-	tt := node.ListTables()
-
-	// has_err := false
-
-	for _, table := range tt {
-		err := table.FlushMemToDisc()
-
-		if err != nil {
-			//("[%s] flush error: %s", table.TableName(), err)
-
-		}
-	}
+func (node *Node) GetSocket() *socket.TcpSocket {
+	return node.sock
 }
 
 func (node *Node) GetDBPath() string {

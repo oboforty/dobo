@@ -36,5 +36,5 @@ func main() {
 		log.Fatalf("[Node] setup error: %s", err)
 	}
 
-	node.RunServer()
+	node.GetSocket().RunServer()
 }
