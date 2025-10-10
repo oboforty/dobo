@@ -38,13 +38,13 @@ func (s SparseIndex[P]) GetInterBlockOffset() uint32 {
 }
 
 func ReadSummaryFile[P core.PartKeyTypes](ss *SSTable[P]) error {
-	file, err := os.OpenFile(ss.FileBase()+".sum", os.O_RDONLY, 0644)
+	sum_file, err := os.OpenFile(ss.FileBase()+".sum", os.O_RDONLY, 0644)
 	if err != nil {
 		return err
 	}
-	defer file.Close()
+	defer sum_file.Close()
 
-	scanner := bufio.NewScanner(file)
+	scanner := bufio.NewScanner(sum_file)
 
 	// 0th part - default statistics
 	ss.Statistics = map[string]int{
@@ -93,7 +93,7 @@ func ReadSummaryFile[P core.PartKeyTypes](ss *SSTable[P]) error {
 		for {
 			sum := SparseIndex[P]{}
 
-			err = ioutils.ReadDynamicValue[uint32](file, &sum.StartPartKey)
+			err = ioutils.ReadDynamicValue[uint32](sum_file, &sum.StartPartKey)
 			if err != nil {
 				if err == io.EOF {
 					// EOF really should only occur here
@@ -102,7 +102,7 @@ func ReadSummaryFile[P core.PartKeyTypes](ss *SSTable[P]) error {
 				return err
 			}
 
-			err = binary.Read(file, binary.BigEndian, sum.BlockOffset)
+			err = binary.Read(sum_file, binary.BigEndian, sum.BlockOffset)
 			if err != nil {
 				return err
 			}
@@ -112,7 +112,6 @@ func ReadSummaryFile[P core.PartKeyTypes](ss *SSTable[P]) error {
 	} else {
 		// load index file into memory, as it's small enough.
 		// binary search over idx will reduce file IO further
-
 		idx_file, err := os.OpenFile(ss.FileBase()+".idx", os.O_RDONLY, 0644)
 		if err != nil {
 			return err
@@ -131,12 +130,12 @@ func ReadSummaryFile[P core.PartKeyTypes](ss *SSTable[P]) error {
 				return err
 			}
 
-			err = binary.Read(file, binary.BigEndian, sum.BlockOffset)
+			err = binary.Read(idx_file, binary.BigEndian, &sum.BlockOffset)
 			if err != nil {
 				return err
 			}
 
-			err = binary.Read(file, binary.BigEndian, sum.InterBlockOffset)
+			err = binary.Read(idx_file, binary.BigEndian, &sum.InterBlockOffset)
 			if err != nil {
 				return err
 			}

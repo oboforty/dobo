@@ -221,7 +221,7 @@ if __name__ == "__main__":
   _, ext = os.path.splitext(filepath)
 
   # TODO: add cli arg parser
-  iterate = 0.035
+  iterate = None#0.035
 
   if ext == '.sum':
     list_sum_file(filepath)

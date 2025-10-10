@@ -20,7 +20,10 @@ type IterableTable[P core.PartKeyTypes] interface {
 }
 
 func (ss *SSTable[P]) WriteToDisc(table IterableTable[P]) error {
-	core.EnsurePath(filepath.Dir(ss.FileBase()))
+	err := core.EnsurePath(filepath.Dir(ss.FileBase()))
+	if err != nil {
+		return err
+	}
 
 	// SSTable.New has created a bloomtree, but create it again, now with an estimate for items!
 	ss.bloom = bloom.New(bloom.CfgBloomFilter{
@@ -94,6 +97,7 @@ func (ss *SSTable[P]) WriteToDisc(table IterableTable[P]) error {
 			binary.Write(buf, binary.BigEndian, node.PartKey)
 			binary.Write(buf, binary.BigEndian, blockOffset)
 			binary.Write(buf, binary.BigEndian, interBlockOffset)
+
 			_, err := idx_file.Write(buf.Bytes())
 			if err != nil {
 				// @TODO: handle remove SSTables & restore from WAL

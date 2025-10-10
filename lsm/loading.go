@@ -123,6 +123,10 @@ func ReadTableConfig(dbPath string) (*CfgTable, error) {
 
 func (t *LSMTreeTable[P]) loadSSTables() error {
 	dbPath := filepath.Join(t.cfg.SSTable.DBPath, t.TableName())
+	err := core.EnsurePath(dbPath)
+	if err != nil {
+		return err
+	}
 
 	// load relevant tables
 	files, err := os.ReadDir(dbPath)
@@ -145,8 +149,11 @@ func (t *LSMTreeTable[P]) loadSSTables() error {
 			genId,
 		)
 
-		slog.Info(fmt.Sprintf("[%s] loading from %s", t.cfg.Name, sst.FileBase()))
-		sst.LoadFromDisc()
+		slog.Info(fmt.Sprintf("[%s] loading SST#%d from %s", t.cfg.Name, genId, sst.FileBase()))
+		err = sst.LoadFromDisc()
+		if err != nil {
+			return err
+		}
 
 		t.SSTables = append(t.SSTables, sst)
 	}

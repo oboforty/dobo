@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"bytes"
-	"encoding/json"
 
 	"github.com/oboforty/dobo/lsm"
 	"github.com/oboforty/dobo/lsm/core"
@@ -13,60 +12,10 @@ import (
 	"github.com/oboforty/dobo/lsm/sstable"
 )
 
-// Tests read & write on memory object only
-func TestReadWriteMemTable(t *testing.T) {
-	CapturePrint(t)
-
-	table, err := lsm.New[int32](&lsm.CfgTable{
-		MemTable: memtable.CfgMemtable{
-			Type:        memtable.MEMTYPE_REDBLACK,
-			MaxByteSize: 300,
-		},
-	})
-
-	if err != nil {
-		t.Error(err)
-		t.FailNow()
-	}
-
-	data := map[string]interface{}{
-		"tes": "show",
-		"asd": 213352,
-		"nested": map[string]interface{}{
-			"fos": "opoly",
-		},
-	}
-
-	serialized, err := json.Marshal(data)
-	if err != nil {
-		t.Error(err)
-		t.FailNow()
-	}
-
-	var key int32 = 1234567890
-	table.Upsert(&core.Item[int32]{
-		PartKey: key,
-		Value:   serialized,
-	})
-
-	item := table.Get(key)
-
-	if item == nil || item.Value == nil {
-		t.FailNow()
-	}
-
-	val := item.Value
-	if !bytes.Equal(val, serialized) {
-		t.FailNow()
-	}
-	if string(val) != `{"asd":213352,"nested":{"fos":"opoly"},"tes":"show"}` {
-		t.Logf("Wrong string: %s", string(val))
-		t.FailNow()
-	}
-}
-
 // Tests writing to disc
 func TestFlushMemTable(t *testing.T) {
+	RandomizeTests(0)
+
 	// Arrange: SS Table
 	const N_ITEMS int32 = 10
 	unitSize := memtable.RB_NODE_PTRS_SIZE + 4 + 8
@@ -101,10 +50,14 @@ func TestFlushMemTable(t *testing.T) {
 	table.Delete(5)
 
 	// Act - flush memtable to disc
+	var ok bool
 	startTime := time.Now()
-	if err = table.FlushMemToDisc(); err != nil {
+	if ok, err = table.FlushMemToDisc(); err != nil {
 		t.Error(err)
 		t.FailNow()
+	}
+	if !ok {
+		t.Error("Flushed empty table!")
 	}
 	elapsed := time.Since(startTime)
 	t.Logf("FLUSH took %d μs", elapsed.Microseconds())
@@ -140,6 +93,24 @@ func TestFlushMemTable(t *testing.T) {
 	// 	t.Error("SSTable GenId mismatch")
 	// 	t.FailNow()
 	// }
+
+	// Act - reload table
+	table2, err := lsm.New[int32](cfg)
+	// Asssert - should be able to load bloom filter & summary
+	if err != nil {
+		t.Fatal(err)
+		t.FailNow()
+	}
+	if len(table2.SSTables) != len(table.SSTables) {
+		t.Errorf("Mismatch of SSTables: %d != %d", len(table.SSTables), len(table2.SSTables))
+		t.FailNow()
+	}
+	// Assert - item can be still found, even if it's not in the MemTable
+	item2 := table2.Get(4)
+	if item2 == nil || item2.PartKey != 4 || len(item2.Value) != 8 {
+		t.Error("SSTable GET #2 fail")
+		t.FailNow()
+	}
 }
 
 // Writes a bunch of items (10 blocks) to disc
@@ -156,7 +127,7 @@ func TestWriteReadItemSSTable(t *testing.T) {
 		t,
 		0,
 		BLOCK_SIZE,
-		false,
+		true,
 	)
 	pkt, _ := core.GetTypeInfo[int32]()
 

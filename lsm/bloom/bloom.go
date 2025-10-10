@@ -43,7 +43,8 @@ func New(cfg CfgBloomFilter) *bloomFilter {
 	} else if cfg.Bits > 0 {
 		bf.bloom = bloom.New(uint(cfg.Bits), uint(cfg.HashFunctions))
 	} else {
-		// ignore creation
+		// used when an existing .bf file is loaded
+		bf.bloom = &bloom.BloomFilter{}
 	}
 
 	return bf
@@ -111,7 +112,7 @@ func (b *bloomFilter) WriteToDisc(filename string) error {
 }
 
 func (b *bloomFilter) LoadFromDisc(filename string) error {
-	file, err := os.OpenFile(filename, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
+	file, err := os.OpenFile(filename, os.O_RDONLY, 0644)
 	if err != nil {
 		return err
 	}

@@ -54,7 +54,10 @@ func New[P core.PartKeyTypes](cfg *CfgTable) (*LSMTreeTable[P], error) {
 	t.partKeyTypeInfo = *typeInfo
 
 	t.createMemtable()
-	t.loadSSTables()
+	err = t.loadSSTables()
+	if err != nil {
+		return nil, err
+	}
 
 	return t, nil
 }
