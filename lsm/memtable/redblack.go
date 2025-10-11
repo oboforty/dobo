@@ -39,18 +39,18 @@ func (rb *RBMemT[P]) Get(partKey P) *core.ItemQuery[P] {
 		if leaf.Value == nil {
 			// nil means Tombstone (item deleted)
 			return &core.ItemQuery[P]{
-				PartKey:      leaf.Key,
-				FoundIn:      core.FOUND_AT_MEM,
-				FoundSSLevel: -1,
-				Deleted:      true,
+				PartKey: leaf.Key,
+				FoundIn: core.FOUND_AT_MEM,
+				// FoundSSLevel: -1,
+				Deleted: true,
 			}
 		}
 
 		return &core.ItemQuery[P]{
-			PartKey:      leaf.Key,
-			Value:        leaf.Value,
-			FoundIn:      core.FOUND_AT_MEM,
-			FoundSSLevel: -1,
+			PartKey: leaf.Key,
+			Value:   leaf.Value,
+			FoundIn: core.FOUND_AT_MEM,
+			// FoundSSLevel: -1,
 		}
 	}
 

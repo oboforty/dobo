@@ -25,7 +25,7 @@ func TestWriteReadConfig(t *testing.T) {
 		RandomizeSeed: 1337,
 		NItems:        2,
 		ItemSize:      10,
-		FoundSSLevel:  0,
+		// FoundSSLevel:  0,
 	}); err != nil {
 		t.Error(err)
 		t.FailNow()

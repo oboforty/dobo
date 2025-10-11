@@ -4,7 +4,7 @@ from typing import Annotated, Literal
 
 from fastapi import Header, HTTPException
 from starlette.requests import Request
-from starlette.responses import Response
+from starlette.responses import Response, JSONResponse
 
 from DoboApi.api.items.router import router
 from DoboApi.api.serialize import convert_key_from_params, get_file_meta
@@ -32,6 +32,10 @@ async def get_item(
     except ItemNotFoundError:
         raise HTTPException(status_code=404, detail="Item not found")
 
+    headers: dict[str, str] = {
+        'X-Found-In': item.found_in.name,
+    }
+
     can_json = accept in ("*/*", "application/json")
     if format == "item" and can_json:
         # OboDB item json schema
@@ -40,13 +44,12 @@ async def get_item(
         except JSONDecodeError:
             raise HTTPException(status_code=400, detail="Invalid JSON item expected")
 
-        return {
+        return JSONResponse({
             'table': table['name'],
             'key': key,
             'item': value
-        }
+        }, headers=headers)
 
-    headers = {}
     filename, content_type = get_file_meta(key, table['key_type'], accept)
     if format == "download":
         headers['Content-Disposition'] = f'attachment; filename="{filename}"'

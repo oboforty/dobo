@@ -71,11 +71,12 @@ func (t *LSMTreeTable[P]) Get(partKey P) *core.ItemQuery[P] {
 	}
 
 	for i := len(t.SSTables) - 1; i >= 0; i-- {
-		item = t.SSTables[i].Get(partKey)
+		sst := t.SSTables[i]
+		item = sst.Get(partKey)
 
 		// @TODO: handle overflow & uint64?
 		if item != nil {
-			item.FoundSSIdx = uint32(i)
+			item.FoundSSIdx = uint32(sst.GetGenerationId())
 			return item
 		}
 	}

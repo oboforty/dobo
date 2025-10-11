@@ -40,7 +40,8 @@ async def download_file(
         content=item.value,
         media_type=content_type,
         headers={
-            'Content-Disposition': f'attachment; filename="{filename}"'
+            'Content-Disposition': f'attachment; filename="{filename}"',
+            'X-Found-In': item.found_in,
         }
     )
 

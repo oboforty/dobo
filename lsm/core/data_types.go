@@ -18,10 +18,10 @@ type ItemQuery[K PartKeyTypes] struct {
 	Value   []byte
 
 	// todo: put these into metadata? or we'll put them at api json lvl?
-	FoundIn      FindStatus
-	FoundSSLevel int8
-	FoundSSIdx   uint32
-	Deleted      bool
+	FoundIn FindStatus
+	// FoundSSLevel int8
+	FoundSSIdx uint32
+	Deleted    bool
 }
 
 type DataType string

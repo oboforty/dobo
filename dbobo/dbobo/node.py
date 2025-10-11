@@ -4,6 +4,7 @@ import json
 import ssl
 import struct
 from asyncio import StreamReader, StreamWriter
+from enum import Enum, IntEnum
 from types import TracebackType
 from typing import Literal, Self, Type, AsyncContextManager, Any, Iterable
 
@@ -152,10 +153,19 @@ class ServerNodeAsync:
             await asyncio.sleep(self.reconnect_delay)
 
 
+class FindStatus(IntEnum):
+    FOUND_STATUS_UNKNOWN = 0
+    FOUND_AT_MEM = 1
+    FOUND_AT_BLOOM = 2
+    FOUND_AT_SS = 3
+    NOT_FOUND = 4
+
+
 @dataclasses.dataclass
 class Item:
     key: bytes
     value: bytes
+    found_in: FindStatus
     # metadata: dict[str, Any]
 
 
@@ -183,14 +193,14 @@ class NodeCommandWrapper:
         print("Create table response: ", resp)
 
     async def get_item(self, table: str, key: bytes) -> Item:
-        value, = await self.conn.request(
+        value, found_in = await self.conn.request(
             cmd=20,
             table=table,
             dynamic_payload=[key],
-            expected_payloads=1
+            expected_payloads=2
         )
 
-        return Item(key=key, value=value)
+        return Item(key=key, value=value, found_in=FindStatus.from_bytes(found_in))
 
     async def put_item(self, table: str, key: bytes, value: bytes):
         resp, = await self.conn.request(

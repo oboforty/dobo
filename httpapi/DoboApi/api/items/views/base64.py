@@ -3,7 +3,7 @@ from typing import Annotated, Literal
 
 from fastapi import Header, HTTPException
 from starlette.requests import Request
-from starlette.responses import PlainTextResponse
+from starlette.responses import PlainTextResponse, JSONResponse
 
 from DoboApi.api.items.router import router
 from DoboApi.api.serialize import convert_key_from_params, get_file_meta
@@ -35,19 +35,21 @@ async def get_item(
         raise HTTPException(status_code=404, detail="Item not found")
 
     value = base64.b64encode(item.value)
+    headers: dict[str, str] = {
+        'X-Found-In': item.found_in.name,
+    }
 
     if accept == "text/plain":
-        headers = {}
         if download:
             filename, _ = get_file_meta(key, table['key_type'], accept)
             headers['Content-Disposition'] = f'attachment; filename="{filename}"'
         return PlainTextResponse(value, headers=headers)
     else:
-        return {
+        return JSONResponse({
             'table': table['name'],
             'key': key,
             'item': value
-        }
+        }, headers=headers)
 
 
 @router.put("/{pkey}/base64")

@@ -20,7 +20,7 @@ type TestIterable struct {
 	NItems        uint32
 	ItemSize      uint32
 	RandomizeSeed uint64
-	FoundSSLevel  int8
+	// FoundSSLevel  int8
 
 	RndItem *core.Item[int32]
 }

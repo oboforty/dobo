@@ -141,7 +141,7 @@ func TestWriteReadItemSSTable(t *testing.T) {
 		RandomizeSeed: 1338,
 		NItems:        n_items,
 		ItemSize:      VAL_SIZE,
-		FoundSSLevel:  0,
+		// FoundSSLevel:  0,
 	}
 
 	// Act - write to disc

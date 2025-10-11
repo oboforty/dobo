@@ -45,6 +45,7 @@ def get_app() -> FastAPI:
     register_startup_event(app)
 
     app.include_router(api_router, prefix='')
+    setup_middleware(app)
 
     if os.environ.get('HTTPAPI_ENV') != 'prod':
         app.mount(

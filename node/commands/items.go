@@ -28,7 +28,7 @@ func GetItem[P core.PartKeyTypes](table *lsm.LSMTreeTable[P], conn net.Conn, key
 		return SendError(GET_ITEM, CommandErrorCode(core.NOT_FOUND), conn)
 	}
 
-	return SendCommandResponse(GET_ITEM, conn, item.Value)
+	return SendCommandResponse(GET_ITEM, conn, item.Value, []byte{item.FoundIn})
 }
 
 func PutItem[P core.PartKeyTypes](table *lsm.LSMTreeTable[P], conn net.Conn, key *P) error {
