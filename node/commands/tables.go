@@ -29,9 +29,27 @@ const (
 	CMD_ERR_TABLE_EMPTY CommandErrorCode = iota + 1
 )
 
+func ListTables(node Node, conn net.Conn) error {
+	tt := node.ListTables()
+	var tables []lsm.CfgTable = make([]lsm.CfgTable, 0, len(tt))
+
+	for _, table := range tt {
+		tables = append(tables, *table.TableInfo())
+	}
+
+	tablesJson, err := json.Marshal(tables)
+
+	if err != nil {
+		return err
+	}
+
+	return SendCommandResponse(LIST_TABLES, conn, tablesJson)
+}
+
 func GetTable(table lsm.LSMTreeTableInterface, conn net.Conn) error {
 	// TODO: @later: make client request return format? for now only JSON is supported
 
+	// to json
 	cfgContent, err := TableCfgBytes(table.TableInfo(), 1)
 
 	if err != nil {
@@ -90,23 +108,6 @@ func SetConfigTable(table lsm.LSMTreeTableInterface, conn net.Conn) error {
 	fmt.Println("EDIT TABLE:", table.TableName())
 
 	return nil
-}
-
-func ListTables(node Node, conn net.Conn) error {
-	tt := node.ListTables()
-	var tables []lsm.CfgTable = make([]lsm.CfgTable, 0, len(tt))
-
-	for _, table := range tt {
-		tables = append(tables, *table.TableInfo())
-	}
-
-	tablesJson, err := json.Marshal(tables)
-
-	if err != nil {
-		return err
-	}
-
-	return SendCommandResponse(LIST_TABLES, conn, tablesJson)
 }
 
 func FlushTable(table lsm.LSMTreeTableInterface, conn net.Conn) error {
@@ -187,13 +188,13 @@ func TableCfgBytes(cfg *lsm.CfgTable, cfgType uint8) ([]byte, error) {
 
 	switch cfgType {
 	case 0: // toml
-		cfgContent, err = toml.Marshal(cfg)
+		cfgContent, err = toml.Marshal(*cfg)
 
 		if err != nil {
 			return nil, fmt.Errorf("toml write error: %s", err)
 		}
 	case 1: // json
-		cfgContent, err = json.Marshal(cfg)
+		cfgContent, err = json.Marshal(*cfg)
 
 		if err != nil {
 			return nil, fmt.Errorf("json write error: %s", err)

@@ -4,10 +4,7 @@ from .table_cache import initialize_cache, get_table_metadata
 
 async def initialize():
     await initialize_pool()
-
-    node = await anext(get_node())
-    tables = await node.list_tables()
-    initialize_cache(tables)
+    await initialize_cache()
 
 
 __all__ = [

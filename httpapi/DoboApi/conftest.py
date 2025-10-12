@@ -1,111 +1,82 @@
-from typing import Any, AsyncGenerator
+import asyncio
+from unittest import mock
+from unittest.mock import AsyncMock, MagicMock
+from typing import AsyncGenerator, Any, Literal
 
 import pytest
+import pytest_asyncio
+from httpx import AsyncClient, ASGITransport
 from fastapi import FastAPI
-from httpx import AsyncClient
-from sqlalchemy.ext.asyncio import (
-    AsyncEngine,
-    AsyncSession,
-    async_sessionmaker,
-    create_async_engine,
-)
 
-from DoboApi.db.dependencies import get_db_session
-from DoboApi.db.utils import create_database, drop_database
-from DoboApi.settings import settings
 from DoboApi.application import get_app
+from DoboApi.services.db import node_pool, get_node, get_table_metadata
+from DoboApi.settings import settings
+from dbobo.node import NodeCommandWrapper
 
 
-@pytest.fixture(scope="session")
-def anyio_backend() -> str:
-    """
-    Backend for anyio pytest plugin.
-
-    :return: backend name.
-    """
-    return "asyncio"
-
-
-@pytest.fixture(scope="session")
-async def _engine() -> AsyncGenerator[AsyncEngine, None]:
-    """
-    Create engine and databases.
-
-    :yield: new engine.
-    """
-    from DoboApi.db.meta import meta  # noqa: WPS433
-    from DoboApi.db.models import load_all_models  # noqa: WPS433
-
-    load_all_models()
-
-    await create_database()
-
-    test_dsn = str(settings.DB.dsn.format(database=settings.DB.test_database))
-    engine = create_async_engine(test_dsn)
-    async with engine.begin() as conn:
-        await conn.run_sync(meta.create_all)
-
-    try:
-        yield engine
-    finally:
-        await engine.dispose()
-        await drop_database()
-
-
-@pytest.fixture
-async def dbsession(
-    _engine: AsyncEngine,
-) -> AsyncGenerator[AsyncSession, None]:
-    """
-    Get session to database.
-
-    Fixture that returns a SQLAlchemy session with a SAVEPOINT, and the rollback to it
-    after the test completes.
-
-    :param _engine: current engine.
-    :yields: async session.
-    """
-    connection = await _engine.connect()
-    trans = await connection.begin()
-
-    session_maker = async_sessionmaker(
-        connection,
-        expire_on_commit=False,
-    )
-    session = session_maker()
-
-    try:
-        yield session
-    finally:
-        await session.close()
-        await trans.rollback()
-        await connection.close()
-
-
-@pytest.fixture
-def fastapi_app(
-    dbsession: AsyncSession,
-) -> FastAPI:
-    """
-    Fixture for creating FastAPI app.
-
-    :return: fastapi app with mocked dependencies.
-    """
-    application = get_app()
-    application.dependency_overrides[get_db_session] = lambda: dbsession
-    return application  # noqa: WPS331
-
-
-@pytest.fixture
-async def client(
-    fastapi_app: FastAPI,
-    anyio_backend: Any,
-) -> AsyncGenerator[AsyncClient, None]:
-    """
-    Fixture that creates client for requesting server.
-
-    :param fastapi_app: the application.
-    :yield: client for the app.
-    """
-    async with AsyncClient(app=fastapi_app, base_url="http://test") as ac:
+@pytest_asyncio.fixture
+async def client():
+    app: FastAPI = get_app()
+    """Create async test client."""
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as ac:
         yield ac
+
+
+class MockedServerNodeAsync:
+    def __init__(self):
+        self._responses: dict[tuple[int, str | None, tuple[bytes, ...] | None | Literal["_T__ANY__"]], tuple[bytes, ...]] = {}
+
+    async def request(
+        self, /, cmd: int, *,
+        table: str = None,
+        payload_format: int = None,
+        dynamic_payload: list[bytes] = None,
+        expected_payloads: int = 1
+    ) -> tuple[bytes, ...] | None:
+        if dynamic_payload:
+            dynamic_payload = tuple(dynamic_payload)
+
+        reqkey = cmd, table, dynamic_payload
+        if reqkey not in self._responses:
+            reqkey = cmd, table, "_T__ANY__"
+
+        if reqkey in self._responses:
+            resp = self._responses[reqkey]
+        else:
+            raise NotImplementedError(f"Node command {cmd} for table {table} not mocked!")
+
+        if len(resp) != expected_payloads:
+            raise Exception(f"Incorrect mocking: expected {expected_payloads} but got {len(resp)}")
+
+        return resp
+
+    def mock_response(
+        self, /, cmd: int, *, table: str = None,
+        dynamic_payload: list[bytes] = None,
+        response: tuple[bytes, ...] | None = None
+    ):
+        if dynamic_payload:
+            if dynamic_payload == Any:
+                dynamic_payload = "_T__ANY__"
+            else:
+                dynamic_payload = tuple(dynamic_payload)
+
+        self._responses[cmd, table, dynamic_payload] = response
+
+    def clear(self):
+        self._responses = {}
+
+
+@pytest_asyncio.fixture
+async def db_node_fixture():
+    # minimum pool size to satisfy every async request
+    assert settings.DBClient.pool_size >= 2
+
+    conn = MockedServerNodeAsync()
+
+    for _ in range(settings.DBClient.pool_size):
+        await node_pool._pool.put(conn)
+
+    return conn

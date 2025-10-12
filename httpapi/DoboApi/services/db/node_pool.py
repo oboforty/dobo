@@ -35,7 +35,7 @@ class OboDBNodePool:
             await self._pool.put(node)
 
 
-node_pool: OboDBNodePool = None
+node_pool: OboDBNodePool = OboDBNodePool()
 
 
 async def get_node() -> AsyncGenerator[NodeCommandWrapper, None]:
@@ -44,6 +44,4 @@ async def get_node() -> AsyncGenerator[NodeCommandWrapper, None]:
 
 
 async def initialize_pool():
-    global node_pool
-    node_pool = OboDBNodePool()
     await node_pool.init()

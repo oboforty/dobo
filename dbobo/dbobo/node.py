@@ -61,15 +61,6 @@ class ServerNodeAsync:
         self.writer.close()
         await self.writer.wait_closed()
 
-    # async def send_command(self, cmd: int, table: str = None, payload: list[bytes] = None):
-        # self.writer.write(struct.pack("!B", cmd))
-        #
-        # if table:
-        #     await self.send_dynamic(table.encode('ascii'), recv_kl=1)
-        # if payload:
-        #     for data in payload:
-        #         await self.send_dynamic(data, recv_kl=4)
-
     def write_dynamic(self, payload: bytes, *, recv_kl: Literal[1, 4] = 4):
         if recv_kl == 1:
             data_length: bytes = struct.pack("!B", len(payload))
@@ -108,6 +99,7 @@ class ServerNodeAsync:
             if table:
                 self.write_dynamic(table.encode('ascii'), recv_kl=1)
 
+            # TODO: refactor this into dynamic payload? as only 1 operation uses it
             if payload_format:
                 self.writer.write(struct.pack("!B", payload_format))
 
@@ -181,7 +173,15 @@ class NodeCommandWrapper:
 
         return json.loads(tables_json)
 
-    async def create_table(self, cfg: dict) -> dict:
+    async def get_table(self, table: str) -> dict:
+        table_json, = await self.conn.request(
+            cmd=10,
+            table=table,
+            expected_payloads=1
+        )
+        return json.loads(table_json)
+
+    async def create_table(self, cfg: dict):
         resp, = await self.conn.request(
             cmd=11,
             payload_format=1, # cfg type = json

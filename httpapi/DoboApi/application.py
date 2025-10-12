@@ -1,4 +1,5 @@
 import os
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI
@@ -7,10 +8,19 @@ from fastapi.staticfiles import StaticFiles
 from DoboApi.api.docs.openapi import create_openapi_schema
 from DoboApi.api.mw import setup_middleware
 from DoboApi.api.router import api_router
+from DoboApi.services.db import initialize
 
-from DoboApi.lifetime import register_startup_event
+# from DoboApi.lifetime import register_startup_event
 
 APP_ROOT = Path(__file__).parent
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    await initialize()
+    yield
+
+    # shut down
 
 
 def get_app() -> FastAPI:
@@ -27,6 +37,7 @@ def get_app() -> FastAPI:
         docs_url=None,
         redoc_url=None,
         openapi_url="/api/openapi.json",
+        lifespan=lifespan
     )
 
     def openapi_gen():
@@ -42,8 +53,7 @@ def get_app() -> FastAPI:
 
     app.openapi = openapi_gen
 
-    register_startup_event(app)
-
+    # register_startup_event(app)
     app.include_router(api_router, prefix='')
     setup_middleware(app)
 
