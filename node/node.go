@@ -13,8 +13,9 @@ import (
 )
 
 type Node struct {
-	DbPath string
-	sock   *socket.TcpSocket
+	DbPath     string
+	clientSock *socket.TcpSocket
+	gossipSock *socket.TcpSocket
 
 	Tables map[string]lsm.LSMTreeTableInterface
 }
@@ -41,7 +42,9 @@ func NewFromDisc(path string) (*Node, error) {
 		Tables: make(map[string]lsm.LSMTreeTableInterface),
 	}
 
-	node.sock, err = socket.New(&cfg.Tcp, node.handleCommands, node.onShutdown)
+	node.clientSock, err = socket.New(&cfg.Tcp, node.handleCommands, node.onShutdown)
+	node.gossipSock, err = socket.New(&cfg.Tcp, node.handleCommands, node.onShutdown)
+
 	if err != nil {
 		return nil, fmt.Errorf("socket error: %s", err)
 	}
@@ -76,8 +79,14 @@ func (node *Node) ListTables() map[string]lsm.LSMTreeTableInterface {
 	return node.Tables
 }
 
-func (node *Node) GetSocket() *socket.TcpSocket {
-	return node.sock
+func (node *Node) GetSocket(name string) *socket.TcpSocket {
+	if name == "client" {
+		return node.clientSock
+	} else if name == "gossip" {
+		return node.gossipSock
+	}
+
+	return nil
 }
 
 func (node *Node) GetDBPath() string {

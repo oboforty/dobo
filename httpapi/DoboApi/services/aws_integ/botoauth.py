@@ -1,4 +1,5 @@
 import json
+from typing import Callable
 
 from botocore.auth import (
     SigV4Auth, SigV4QueryAuth,
@@ -42,7 +43,7 @@ def get_auth_claims(headers) -> dict:
     return dict(x.split('=') for x in headers['Authorization'].removeprefix('AWS4-HMAC-SHA256 ').split(', '))
 
 
-def signv4_verify(request: AWSRequest, *, secret_getter) -> tuple[str,str] | None:
+def signv4_verify(request: AWSRequest, *, secret_getter: Callable[[str], str]) -> tuple[str,str] | None:
     # todo: detect if it's not signv4 or if it's S3?
     # todo: add internal request class to pass flask.Request -> TomcruRequest -> AWSRequest
 

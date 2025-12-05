@@ -16,5 +16,10 @@ dependencies = [
     "uvicorn>=0.37.0",
 ]
 
+[project.optional-dependencies]
+aws = [
+    "botocore>=1.40.50",
+]
+
 [tool.uv.sources]
 dbobo = { path = "../dbobo", editable = true }

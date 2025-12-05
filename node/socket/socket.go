@@ -21,6 +21,14 @@ type CfgTcp struct {
 	Cert    string `toml:"cert"`
 }
 
+type CfgNeighborNode struct {
+	Host    string `toml:"host"`
+	Port    int16  `toml:"port"`
+	PubKey  string `toml:"public_key"`
+	PrivKey string `toml:"private_key"`
+	Cert    string `toml:"cert"`
+}
+
 func (cfg *CfgTcp) Defaults() {
 	if len(cfg.Host) == 0 {
 		cfg.Host = "0.0.0.0"

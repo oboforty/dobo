@@ -5,8 +5,17 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="f89a8abc-8fa8-4f4e-8197-84b29f0e3ef7" name="Changes" comment="">
+      <change afterPath="$PROJECT_DIR$/../httpapi/DoboApi/services/aws_integ/__init__.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../node/commands/items.go" beforeDir="false" afterPath="$PROJECT_DIR$/../node/commands/items.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../httpapi/DoboApi/api/aws_integ/aws_integ.py" beforeDir="false" afterPath="$PROJECT_DIR$/../httpapi/DoboApi/services/aws_integ/botoauth.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../httpapi/DoboApi/api/aws_integ/dml_views.py" beforeDir="false" afterPath="$PROJECT_DIR$/../httpapi/DoboApi/api/aws_integ/dml_views.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../httpapi/DoboApi/api/mw.py" beforeDir="false" afterPath="$PROJECT_DIR$/../httpapi/DoboApi/api/mw.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../httpapi/DoboApi/services/db/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/../httpapi/DoboApi/services/db/__init__.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../httpapi/pyproject.toml" beforeDir="false" afterPath="$PROJECT_DIR$/../httpapi/pyproject.toml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../httpapi/uv.lock" beforeDir="false" afterPath="$PROJECT_DIR$/../httpapi/uv.lock" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../main.go" beforeDir="false" afterPath="$PROJECT_DIR$/../main.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../node/node.go" beforeDir="false" afterPath="$PROJECT_DIR$/../node/node.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../node/socket/socket.go" beforeDir="false" afterPath="$PROJECT_DIR$/../node/socket/socket.go" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -102,7 +111,7 @@
   <component name="SharedIndexes">
     <attachedChunks>
       <set>
-        <option value="bundled-python-sdk-b3d66beaba9a-c6efb3732140-com.jetbrains.pycharm.pro.sharedIndexes.bundled-PY-252.26199.168" />
+        <option value="bundled-python-sdk-4e2b1448bda8-9a97661f3031-com.jetbrains.pycharm.pro.sharedIndexes.bundled-PY-252.27397.106" />
       </set>
     </attachedChunks>
   </component>
