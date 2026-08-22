@@ -39,25 +39,6 @@ type MemTable[P core.PartKeyTypes] interface {
 type WAL interface {
 }
 
-func New[P core.PartKeyTypes](cfg *CfgTable) (*LSMTreeTable[P], error) {
-	cfg.ApplyDefaults()
-
-	t := &LSMTreeTable[P]{
-		cfg: *cfg,
-	}
-
-	typeInfo, err := core.GetTypeInfo[P]()
-	if err != nil {
-		return nil, err
-	}
-	t.partKeyTypeInfo = *typeInfo
-
-	t.createMemtable()
-	t.loadSSTables()
-
-	return t, nil
-}
-
 func (t *LSMTreeTable[P]) Get(partKey P) *core.ItemQuery[P] {
 	var item *core.ItemQuery[P]
 

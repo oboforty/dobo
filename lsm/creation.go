@@ -158,6 +158,25 @@ type LSMTreeTableInterface interface {
 	// @TODO: add more useful funcs to this interface
 }
 
+func New[P core.PartKeyTypes](cfg *CfgTable) (*LSMTreeTable[P], error) {
+	cfg.ApplyDefaults()
+
+	t := &LSMTreeTable[P]{
+		cfg: *cfg,
+	}
+
+	typeInfo, err := core.GetTypeInfo[P]()
+	if err != nil {
+		return nil, err
+	}
+	t.partKeyTypeInfo = *typeInfo
+
+	t.createMemtable()
+	t.loadSSTables()
+
+	return t, nil
+}
+
 func NewFromDisc(dbPath string) (LSMTreeTableInterface, error) {
 	cfg, err := ReadTableConfig(dbPath)
 	if err != nil {
